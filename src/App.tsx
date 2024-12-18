@@ -9,9 +9,13 @@ import Groups from '@/pages/Groups';
 import Profile from '@/pages/Profile';
 import { Login } from '@/pages/Login';
 import { SignUp } from '@/pages/SignUp';
+import { useAuth } from '@/contexts/AuthContext';
 
 const App: React.FC = () => {
-  const isAuthenticated = false;
+  const { currentUser } = useAuth();
+  // const isAuthenticated = !!currentUser;
+  const isAuthenticated = true;
+
   return (
     <BrowserRouter>
       <Box sx={{ pb: 7, height: '100vh', overflow: 'auto' }}>
