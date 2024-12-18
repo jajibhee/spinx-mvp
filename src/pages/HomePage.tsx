@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Container,
@@ -11,15 +10,25 @@ import {
   Card,
   CardContent,
   Avatar,
-  Chip
+  Chip,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { ViewType, SportFilter, Player, Group, Sport } from '@/types';
 import { NEARBY_PLAYERS, NEARBY_GROUPS } from '@/data/mockData';
+import { useNavigate } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
+  const navigate = useNavigate();
+
   console.log('Mock Data:', { NEARBY_PLAYERS, NEARBY_GROUPS });
   const [view, setView] = useState<ViewType>('players');
   const [selectedSport, setSelectedSport] = useState<SportFilter>('all');
+  const [pendingConnections, setPendingConnections] = useState<number[]>([]);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: ''
+  });
 
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: ViewType | null) => {
     if (newView !== null) {
@@ -29,6 +38,16 @@ const HomePage: React.FC = () => {
 
   const handleSportChange = (sport: SportFilter) => {
     setSelectedSport(sport);
+  };
+
+  const handleConnect = (playerId: number) => {
+    setPendingConnections(prev => [...prev, playerId]);
+    setSnackbar({
+      open: true,
+      message: 'Connection request sent!'
+    });
+    // Add your connection request logic here
+    // await sendConnectionRequest(playerId);
   };
 
   const renderPlayerCard = (player: Player) => (
@@ -56,8 +75,13 @@ const HomePage: React.FC = () => {
               </Box>
             </Box>
           </Box>
-          <Button variant="contained" color="primary">
-            Connect
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => handleConnect(player.id)}
+            disabled={pendingConnections.includes(player.id)}
+          >
+            {pendingConnections.includes(player.id) ? 'Pending' : 'Connect'}
           </Button>
         </Box>
       </CardContent>
@@ -77,8 +101,12 @@ const HomePage: React.FC = () => {
               {group.members} members
             </Typography>
           </Box>
-          <Button variant="contained" color="primary">
-            Join
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => navigate(`/groups/${group.id}`)}
+          >
+            View Group
           </Button>
         </Box>
       </CardContent>
@@ -91,7 +119,7 @@ const HomePage: React.FC = () => {
         <Typography variant="h5" component="h1" fontWeight="bold">
           Near Me
         </Typography>
-        <Button variant="contained" color="primary">
+        <Button variant="contained" color="primary" onClick={() => navigate('/create-group')}>
           Create Group
         </Button>
       </Box>
@@ -135,6 +163,21 @@ const HomePage: React.FC = () => {
               .map(renderGroupCard)
         }
       </Box>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity="success"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

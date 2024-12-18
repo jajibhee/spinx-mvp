@@ -10,6 +10,10 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 import { auth } from '@/config/firebase';
+import { UserProfile } from '@/types';
+import { updateDoc, doc } from 'firebase/firestore';
+// import { storage } from '@/config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -17,6 +21,9 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
+  uploadProfilePhoto: (file: File) => Promise<string>;
+  uploadGroupImage: (file: File) => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -58,12 +65,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => signOut(auth);
 
+  const updateProfile = async (profile: Partial<UserProfile>) => {
+    // if (!currentUser) throw new Error('No user logged in');
+    
+    // // Update Firebase auth profile
+    // await updateProfile(currentUser, {
+    //   displayName: profile.displayName,
+    //   photoURL: profile.photoURL,
+    // });
+
+    // // Update additional profile data in Firestore
+    // await updateDoc(doc(db, 'users', currentUser.uid), profile);
+  };
+
+  const uploadProfilePhoto = async (file: File) => {
+    // if (!currentUser) throw new Error('No user logged in');
+    
+    // const storageRef = ref(storage, `users/${currentUser.uid}/profile.jpg`);
+    // await uploadBytes(storageRef, file);
+    // return await getDownloadURL(storageRef);
+  };
+
+  const uploadGroupImage = async (file: File): Promise<string> => {
+    // const storageRef = ref(storage, `groups/${Date.now()}_${file.name}`);
+    // await uploadBytes(storageRef, file);
+    // return await getDownloadURL(storageRef);
+    return '';
+  };
+
   const value = {
     currentUser,
     signup,
     login,
     loginWithGoogle,
-    logout
+    logout,
+    updateProfile,
+    uploadProfilePhoto,
+    uploadGroupImage,
   };
 
   return (
