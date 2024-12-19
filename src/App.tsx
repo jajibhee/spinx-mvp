@@ -12,6 +12,7 @@ import { SignUp } from '@/pages/SignUp';
 import { useAuth } from '@/contexts/AuthContext';
 import CreateGroup from '@/pages/CreateGroup';
 import GroupDetails from '@/pages/GroupDetails';
+import Requests from '@/pages/Requests';
 
 const App: React.FC = () => {
   const { currentUser } = useAuth();
@@ -40,6 +41,7 @@ const App: React.FC = () => {
             path="/groups/:groupId" 
             element={isAuthenticated ? <GroupDetails /> : <Navigate to="/login" />} 
           />
+          <Route path="/requests" element={<Requests />} />
         </Routes>
         
         {/* Only show navigation when authenticated */}

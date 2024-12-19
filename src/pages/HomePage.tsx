@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -22,10 +22,14 @@ import { NEARBY_PLAYERS, NEARBY_GROUPS } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/config/firebase';
+import { collection, addDoc, query, where, getDocs, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { NotificationBadge } from '@/components/NotificationBadge';
+import { PlayRequestDialog } from '@/components/PlayRequestDialog';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   console.log('Mock Data:', { NEARBY_PLAYERS, NEARBY_GROUPS });
@@ -36,6 +40,10 @@ const HomePage: React.FC = () => {
     open: false,
     message: ''
   });
+  const [playRequests, setPlayRequests] = useState<{[key: string]: string}>({});
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
 
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: ViewType | null) => {
     if (newView !== null) {
@@ -48,13 +56,101 @@ const HomePage: React.FC = () => {
   };
 
   const handleConnect = (playerId: number) => {
-    setPendingConnections(prev => [...prev, playerId]);
-    setSnackbar({
-      open: true,
-      message: 'Connection request sent!'
-    });
-    // Add your connection request logic here
-    // await sendConnectionRequest(playerId);
+    if (!currentUser) {
+      setSnackbar({
+        open: true,
+        message: 'Please sign in to send play requests'
+      });
+      return;
+    }
+    setSelectedPlayerId(playerId);
+    setDialogOpen(true);
+  };
+
+  const handleSendRequest = async (message: string) => {
+    if (!currentUser || !selectedPlayerId) return;
+
+    try {
+      setSendingRequest(true);
+      setPendingConnections(prev => [...prev, selectedPlayerId]);
+      
+      await addDoc(collection(db, 'playRequests'), {
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || 'Anonymous',
+        senderEmail: currentUser.email,
+        senderPhone: currentUser.phoneNumber || '',
+        receiverId: selectedPlayerId,
+        status: 'pending',
+        sport: selectedSport === 'all' ? 'tennis' : selectedSport,
+        createdAt: Timestamp.now(),
+        message,
+        contactShared: false
+      });
+
+      setSnackbar({
+        open: true,
+        message: 'Play request sent! You\'ll be notified when they respond.'
+      });
+    } catch (error) {
+      console.error('Error sending play request:', error);
+      setPendingConnections(prev => prev.filter(id => id !== selectedPlayerId));
+      setSnackbar({
+        open: true,
+        message: 'Failed to send play request'
+      });
+    } finally {
+      setSendingRequest(false);
+      setDialogOpen(false);
+      setSelectedPlayerId(null);
+    }
+  };
+
+  // Check existing play requests
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const fetchPlayRequests = async () => {
+      // Sent requests
+      const sentQuery = query(
+        collection(db, 'playRequests'),
+        where('senderId', '==', currentUser.uid),
+        where('status', '==', 'pending')
+      );
+
+      // Received requests
+      const receivedQuery = query(
+        collection(db, 'playRequests'),
+        where('receiverId', '==', currentUser.uid),
+        where('status', '==', 'pending')
+      );
+
+      const [sentSnapshot, receivedSnapshot] = await Promise.all([
+        getDocs(sentQuery),
+        getDocs(receivedQuery)
+      ]);
+
+      const requests: {[key: string]: string} = {};
+      sentSnapshot.docs.forEach(doc => {
+        requests[doc.data().receiverId] = 'sent';
+      });
+      receivedSnapshot.docs.forEach(doc => {
+        requests[doc.data().senderId] = 'received';
+      });
+
+      setPlayRequests(requests);
+      setPendingConnections(
+        sentSnapshot.docs.map(doc => doc.data().receiverId)
+      );
+    };
+
+    fetchPlayRequests();
+  }, [currentUser]);
+
+  const getConnectButtonText = (playerId: number) => {
+    const requestStatus = playRequests[playerId];
+    if (requestStatus === 'sent') return 'Request Sent';
+    if (requestStatus === 'received') return 'Respond to Request';
+    return 'Send Play Request';
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -108,10 +204,14 @@ const HomePage: React.FC = () => {
           <Button 
             variant="contained" 
             color="primary"
-            onClick={() => handleConnect(player.id)}
-            disabled={pendingConnections.includes(player.id)}
+            onClick={() => 
+              playRequests[player.id] === 'received' 
+                ? navigate(`/requests`) 
+                : handleConnect(player.id)
+            }
+            disabled={playRequests[player.id] === 'sent'}
           >
-            {pendingConnections.includes(player.id) ? 'Pending' : 'Connect'}
+            {getConnectButtonText(player.id)}
           </Button>
         </Box>
       </CardContent>
@@ -153,6 +253,7 @@ const HomePage: React.FC = () => {
           <Button variant="contained" color="primary" onClick={() => navigate('/create-group')}>
             Create Group
           </Button>
+          <NotificationBadge />
           <IconButton
             edge="end"
             color="inherit"
@@ -219,6 +320,17 @@ const HomePage: React.FC = () => {
               .map(renderGroupCard)
         }
       </Box>
+
+      <PlayRequestDialog
+        open={dialogOpen}
+        onClose={() => {
+          setDialogOpen(false);
+          setSelectedPlayerId(null);
+        }}
+        onSubmit={handleSendRequest}
+        sport={selectedSport === 'all' ? 'tennis' : selectedSport}
+        loading={sendingRequest}
+      />
 
       <Snackbar
         open={snackbar.open}
