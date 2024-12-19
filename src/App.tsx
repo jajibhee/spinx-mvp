@@ -58,8 +58,6 @@ const App: React.FC = () => {
         {/* Only show navigation when authenticated */}
         {isAuthenticated && <Navigation />}
 
-          <Button onClick={handleSeed}>Seed Database</Button>
-
       </Box>
     </BrowserRouter>
   );

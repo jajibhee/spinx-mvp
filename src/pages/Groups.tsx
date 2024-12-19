@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -14,23 +14,15 @@ import {
   Divider
 } from '@mui/material';
 import { Group as GroupIcon, Person as PersonIcon } from '@mui/icons-material';
+import { Connection } from '@/types';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
   value: number;
-}
-
-interface PlayHistory {
-  id: number;
-  date: string;
-  location: string;
-  players: {
-    id: number;
-    name: string;
-    avatar?: string;
-  }[];
-  sport: 'tennis' | 'pickleball';
 }
 
 interface Group {
@@ -54,7 +46,35 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 );
 
 const Groups: React.FC = () => {
+  const { currentUser } = useAuth();
   const [tabValue, setTabValue] = useState(0);
+  const [connections, setConnections] = useState<Connection[]>([]);
+
+  console.log('connections', connections);
+  // Fetch connections
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const fetchConnections = async () => {
+      try {
+        const q = query(
+          collection(db, 'connections'),
+          where('players', 'array-contains-any', [currentUser.uid]),
+          orderBy('lastPlayedAt', 'desc')
+        );
+
+        const snapshot = await getDocs(q);
+        setConnections(snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Connection[]);
+      } catch (error) {
+        console.error('Error fetching connections:', error);
+      }
+    };
+
+    fetchConnections();
+  }, [currentUser]);
 
   // Mock data - replace with actual data from your backend
   const myGroups: Group[] = [
@@ -72,20 +92,6 @@ const Groups: React.FC = () => {
       ]
     },
     // Add more groups...
-  ];
-
-  const playHistory: PlayHistory[] = [
-    {
-      id: 1,
-      date: "2024-03-15",
-      location: "Local Court",
-      players: [
-        { id: 1, name: "Alex Johnson" },
-        { id: 2, name: "Sarah Williams" },
-      ],
-      sport: "tennis"
-    },
-    // Add more play history...
   ];
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -134,42 +140,34 @@ const Groups: React.FC = () => {
     </Card>
   );
 
-  const renderPlayHistoryCard = (history: PlayHistory) => (
-    <Card key={history.id} sx={{ mb: 2 }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>
-              {new Date(history.date).toLocaleDateString('en-US', { 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              {history.location}
-            </Typography>
-            <Chip 
-              label={history.sport.charAt(0).toUpperCase() + history.sport.slice(1)}
-              size="small"
-            />
+  const renderConnectionCard = (connection: Connection) => {
+    const otherPlayerDetails = connection.playerDetails.find(p => p.id !== currentUser?.uid);
+    if (!otherPlayerDetails) return null;
+
+    return (
+      <Card key={connection.id} sx={{ mb: 2 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                {otherPlayerDetails.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Last played {new Date(connection.lastPlayedAt).toLocaleDateString()}
+              </Typography>
+              <Chip 
+                label={connection.sport.charAt(0).toUpperCase() + connection.sport.slice(1)}
+                size="small"
+              />
+            </Box>
+            <Avatar src={otherPlayerDetails.photoURL || undefined}>
+              {otherPlayerDetails.name[0]}
+            </Avatar>
           </Box>
-        </Box>
-        
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Played with
-          </Typography>
-          <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
-            {history.players.map(player => (
-              <Avatar key={player.id} src={player.avatar}>
-                {player.name.charAt(0)}
-              </Avatar>
-            ))}
-          </AvatarGroup>
-        </Box>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <Container maxWidth="sm" sx={{ pt: 2 }}>
@@ -184,7 +182,7 @@ const Groups: React.FC = () => {
         sx={{ borderBottom: 1, borderColor: 'divider' }}
       >
         <Tab icon={<GroupIcon />} label="Groups" />
-        <Tab icon={<PersonIcon />} label="Play History" />
+        <Tab icon={<PersonIcon />} label="Connections" />
       </Tabs>
 
       <TabPanel value={tabValue} index={0}>
@@ -198,11 +196,11 @@ const Groups: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
-        {playHistory.length > 0 ? (
-          playHistory.map(renderPlayHistoryCard)
+        {connections.length > 0 ? (
+          connections.map(renderConnectionCard)
         ) : (
           <Typography variant="body1" color="text.secondary" align="center">
-            No play history yet
+            No connections yet. Connect with players to get started!
           </Typography>
         )}
       </TabPanel>

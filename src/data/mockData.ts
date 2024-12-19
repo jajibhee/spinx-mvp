@@ -31,22 +31,38 @@ const playerAvailability: Availability = {
 
 export const NEARBY_PLAYERS: Player[] = [
   {
-    id: 1,
+    id: 'user1',
     name: 'Jaji Bhee',
+    displayName: 'Jaji Bhee',
+    email: 'jaji@example.com',
+    photoURL: null,
+    bio: 'Tennis enthusiast',
     level: 'Intermediate',
-    distance: '0.5 miles',
     sports: ['tennis', 'pickleball'],
+    zipCode: '75001',
+    phoneNumber: '',
+    distance: '0.5 miles',
+    createdAt: new Date().toISOString(),
+    onboardingCompleted: true,
     availability: {
       ...playerAvailability,
       preferredTimes: 'evening'
     }
   },
   {
-    id: 2,
+    id: 'user2',
     name: 'Dami Baba',
+    displayName: 'Dami Baba',
+    email: 'dami@example.com',
+    photoURL: null,
+    bio: 'Early bird player',
     level: 'Intermediate',
-    distance: '0.5 miles',
     sports: ['tennis', 'pickleball'],
+    zipCode: '75002',
+    phoneNumber: '',
+    distance: '0.5 miles',
+    createdAt: new Date().toISOString(),
+    onboardingCompleted: true,
     availability: {
       ...playerAvailability,
       preferredTimes: 'morning',
@@ -58,20 +74,20 @@ export const NEARBY_PLAYERS: Player[] = [
 
 export const NEARBY_GROUPS: Group[] = [
   {
-    id: 1,
+    id: 'group1',
     name: 'Tennis Club',
     sport: 'tennis',
     location: 'Local Court',
-    members: [{ id: 1, name: 'John Doe' }],
+    members: [{ id: 'user1', name: 'John Doe' }],
     memberCount: 25,
     lastActive: new Date().toISOString()
   },
   {
-    id: 2,
+    id: 'group2',
     name: 'Tennis Tribe DTX',
     sport: 'tennis',
     location: 'Local Court',
-    members: [{ id: 2, name: 'Jane Doe' }],
+    members: [{ id: 'user2', name: 'Jane Doe' }],
     memberCount: 10,
     lastActive: new Date().toISOString()
   }

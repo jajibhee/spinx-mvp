@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, updateDoc, doc, Timestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, Timestamp, addDoc, getDoc } from 'firebase/firestore';
 
 interface PlayRequest {
   id: string;
@@ -39,6 +39,12 @@ const Requests: React.FC = () => {
   const [sentRequests, setSentRequests] = useState<PlayRequest[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [acceptingRequest, setAcceptingRequest] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   useEffect(() => {
     if (!currentUser) return;
@@ -99,6 +105,30 @@ const Requests: React.FC = () => {
       });
 
       if (action === 'accept') {
+        // Create a new connection
+        await addDoc(collection(db, 'connections'), {
+          players: [
+            request.senderId,
+            currentUser.uid
+          ],
+          playerDetails: [
+            {
+              id: request.senderId,
+              name: request.senderName,
+              photoURL: null
+            },
+            {
+              id: currentUser.uid,
+              name: currentUser.displayName || 'Anonymous',
+              photoURL: currentUser.photoURL
+            }
+          ],
+          sport: request.sport,
+          createdAt: new Date().toISOString(),
+          lastPlayedAt: new Date().toISOString(),
+          status: 'active'
+        });
+
         // Create notification for sender
         await addDoc(collection(db, 'notifications'), {
           userId: request.senderId,
@@ -116,7 +146,7 @@ const Requests: React.FC = () => {
       
       setSuccess(
         action === 'accept' 
-          ? 'Request accepted! You can now see each other\'s contact information.'
+          ? 'Request accepted! Player added to your connections.'
           : 'Request declined'
       );
 

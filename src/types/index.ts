@@ -1,29 +1,37 @@
 // types/index.ts
 export interface Player {
-    id: number;
+    id: string;
     name: string;
-    sports: Sport[];
+    displayName: string;
+    email: string;
+    photoURL: string | null;
+    bio: string;
     level: 'Beginner' | 'Intermediate' | 'Advanced';
+    sports: Sport[];
+    zipCode: string;
+    phoneNumber: string;
+    availability: Availability;
     distance: string;
-    availability?: Availability;
+    createdAt: string;
+    onboardingCompleted: boolean;
   }
   
   export interface Group {
-    id: number;
+    id: string;
     name: string;
     sport: 'tennis' | 'pickleball';
     memberCount: number;
     location: string;
     lastActive: string;
     members: {
-      id: number;
+      id: string;
       name: string;
       avatar?: string;
     }[];
   }
   
   export interface Court {
-    id: number;
+    id: string;
     name: string;
     type: 'tennis' | 'pickleball';
     location: string;
@@ -39,11 +47,11 @@ export interface Player {
   export type SportFilter = Sport | 'all';
   
   export interface PlayHistory {
-    id: number;
+    id: string;
     date: string;
     location: string;
     players: {
-      id: number;
+      id: string;
       name: string;
       avatar?: string;
     }[];
@@ -93,4 +101,18 @@ export interface Player {
       endTime: string;
       recurring: boolean;
     }[];
+  }
+  
+  export interface Connection {
+    id: string;
+    players: string[];
+    playerDetails: {
+      id: string;
+      name: string;
+      photoURL: string | null;
+    }[];
+    sport: Sport;
+    createdAt: string;
+    lastPlayedAt: string;
+    status: 'active' | 'inactive';
   }

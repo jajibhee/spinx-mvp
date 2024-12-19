@@ -52,24 +52,29 @@ const Onboarding: React.FC = () => {
     e.preventDefault();
     if (!currentUser) return;
 
-    if (!profile.displayName || !profile.zipCode || profile.sports.length === 0) {
-      setError('Please fill in all required fields and select at least one sport');
-      return;
-    }
-
     try {
       setLoading(true);
       setError('');
 
-      // Create user profile in Firestore
-      await setDoc(doc(db, 'users', currentUser.uid), {
+      const userData = {
         ...profile,
+        id: currentUser.uid,
+        name: profile.displayName,
+        displayName: profile.displayName,
         email: currentUser.email,
         photoURL: currentUser.photoURL,
         createdAt: new Date().toISOString(),
-        onboardingCompleted: true
-      });
+        onboardingCompleted: true,
+        distance: '0.0 miles',
+        sports: profile.sports || [],
+        bio: profile.bio || '',
+        phoneNumber: profile.phoneNumber || '',
+        zipCode: profile.zipCode || '',
+        level: profile.level || 'Beginner',
+        availability: profile.availability || defaultAvailability
+      };
 
+      await setDoc(doc(db, 'users', currentUser.uid), userData);
       navigate('/');
     } catch (err) {
       console.error('Error saving profile:', err);

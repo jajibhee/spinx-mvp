@@ -15,7 +15,9 @@ import {
   Select,
   MenuItem,
   Alert,
-  Stack
+  Stack,
+  Card,
+  CardContent
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -27,6 +29,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sport, Availability } from '@/types';
 import { AvailabilityEditor } from '@/components/AvailabilityEditor';
 import { defaultAvailability } from '@/utils/defaults';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 interface UserProfile {
   displayName: string;

@@ -18,7 +18,7 @@ import {
   MenuItem,
   CircularProgress,
 } from '@mui/material';
-import { ViewType, SportFilter, Player, Group, Sport } from '@/types';
+import { ViewType, SportFilter, Player, Group, Sport, Connection } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,13 +44,13 @@ const HomePage: React.FC = () => {
     const savedSport = localStorage.getItem('selectedSport');
     return (savedSport as SportFilter) || 'all';
   });
-  const [pendingConnections, setPendingConnections] = useState<number[]>([]);
+  const [pendingConnections, setPendingConnections] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: ''
   });
   const [playRequests, setPlayRequests] = useState<{[key: string]: string}>({});
-  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -59,6 +59,7 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState('');
   const [lastDoc, setLastDoc] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
+  const [connections, setConnections] = useState<Connection[]>([]);
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -73,6 +74,29 @@ const HomePage: React.FC = () => {
     checkOnboarding();
   }, [currentUser, navigate]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const fetchConnections = async () => {
+      try {
+        const q = query(
+          collection(db, 'connections'),
+          where('players', 'array-contains', currentUser.uid)
+        );
+
+        const snapshot = await getDocs(q);
+        setConnections(snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Connection[]);
+      } catch (error) {
+        console.error('Error fetching connections:', error);
+      }
+    };
+
+    fetchConnections();
+  }, [currentUser]);
+
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: ViewType | null) => {
     if (newView !== null) {
       setView(newView);
@@ -85,7 +109,7 @@ const HomePage: React.FC = () => {
     localStorage.setItem('selectedSport', sport);
   };
 
-  const handleConnect = (playerId: number) => {
+  const handleConnect = (playerId: string) => {
     if (!currentUser) {
       setSnackbar({
         open: true,
@@ -176,11 +200,22 @@ const HomePage: React.FC = () => {
     fetchPlayRequests();
   }, [currentUser]);
 
-  const getConnectButtonText = (playerId: number) => {
+  const getConnectButtonText = (playerId: string) => {
+    const isConnected = connections.some(conn => 
+      conn.players.includes(playerId) && conn.players.includes(currentUser?.uid || '')
+    );
+    
+    if (isConnected) return 'Connected';
     const requestStatus = playRequests[playerId];
     if (requestStatus === 'sent') return 'Request Sent';
     if (requestStatus === 'received') return 'Respond to Request';
     return 'Send Play Request';
+  };
+
+  const isConnected = (playerId: string) => {
+    return connections.some(conn => 
+      conn.players.includes(playerId) && conn.players.includes(currentUser?.uid || '')
+    );
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -210,8 +245,11 @@ const HomePage: React.FC = () => {
     <Card key={player.id}>
       <CardContent>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Avatar sx={{ width: 48, height: 48 }}>
-            {player.name.charAt(0)}
+          <Avatar 
+            src={player.photoURL || undefined}
+            sx={{ width: 48, height: 48 }}
+          >
+            {player.name[0]}
           </Avatar>
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -225,9 +263,13 @@ const HomePage: React.FC = () => {
                     ? navigate(`/requests`) 
                     : handleConnect(player.id)
                 }
-                disabled={playRequests[player.id] === 'sent'}
+                disabled={
+                  playRequests[player.id] === 'sent' || 
+                  player.id === currentUser?.uid ||
+                  isConnected(player.id)
+                }
               >
-                {getConnectButtonText(player.id)}
+                {player.id === currentUser?.uid ? 'You' : getConnectButtonText(player.id)}
               </Button>
             </Box>
 
@@ -287,20 +329,30 @@ const HomePage: React.FC = () => {
       setError('');
 
       if (view === 'players') {
-        const playersRef = collection(db, 'players');
+        const usersRef = collection(db, 'users');
         let q = selectedSport === 'all' 
-          ? query(playersRef, orderBy('name'), limit(ITEMS_PER_PAGE))
-          : query(playersRef, 
+          ? query(
+              usersRef,
+              orderBy('name'),
+              limit(ITEMS_PER_PAGE)
+            )
+          : query(
+              usersRef,
               where('sports', 'array-contains', selectedSport),
               orderBy('name'),
               limit(ITEMS_PER_PAGE)
             );
 
-        // If loading more, start after the last document
         if (loadMore && lastDoc) {
           q = selectedSport === 'all'
-            ? query(playersRef, orderBy('name'), startAfter(lastDoc), limit(ITEMS_PER_PAGE))
-            : query(playersRef,
+            ? query(
+                usersRef,
+                orderBy('name'),
+                startAfter(lastDoc),
+                limit(ITEMS_PER_PAGE)
+              )
+            : query(
+                usersRef,
                 where('sports', 'array-contains', selectedSport),
                 orderBy('name'),
                 startAfter(lastDoc),
@@ -309,12 +361,22 @@ const HomePage: React.FC = () => {
         }
 
         const snapshot = await getDocs(q);
-        const fetchedPlayers = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: parseInt(doc.id)
-        })) as Player[];
+        console.log('All users in DB:', snapshot.docs.map(doc => ({
+          id: doc.id,
+          onboardingCompleted: doc.data().onboardingCompleted,
+          name: doc.data().name,
+          ...doc.data()
+        })));
+        
+        const fetchedUsers = snapshot.docs
+          .map(doc => ({
+            ...doc.data(),
+            id: doc.id
+          }))
+          .filter(user => user.id !== currentUser?.uid) as Player[];
 
-        setPlayers(prev => loadMore ? [...prev, ...fetchedPlayers] : fetchedPlayers);
+        console.log('Processed users:', fetchedUsers);
+        setPlayers(prev => loadMore ? [...prev, ...fetchedUsers] : fetchedUsers);
         setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
         setHasMore(snapshot.docs.length === ITEMS_PER_PAGE);
       } else {
@@ -340,11 +402,14 @@ const HomePage: React.FC = () => {
         }
 
         const snapshot = await getDocs(q);
+        console.log('Raw group docs:', snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        
         const fetchedGroups = snapshot.docs.map(doc => ({
           ...doc.data(),
-          id: parseInt(doc.id)
+          id: doc.id
         })) as Group[];
 
+        console.log('Processed groups:', fetchedGroups);
         setGroups(prev => loadMore ? [...prev, ...fetchedGroups] : fetchedGroups);
         setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
         setHasMore(snapshot.docs.length === ITEMS_PER_PAGE);
