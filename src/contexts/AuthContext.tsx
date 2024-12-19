@@ -12,7 +12,7 @@ import {
 import { auth } from '@/config/firebase';
 import { UserProfile } from '@/types';
 import { updateDoc, doc } from 'firebase/firestore';
-// import { storage } from '@/config/firebase';
+import { storage } from '@/config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface AuthContextType {
@@ -78,12 +78,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // await updateDoc(doc(db, 'users', currentUser.uid), profile);
   };
 
-  const uploadProfilePhoto = async (file: File) => {
-    // if (!currentUser) throw new Error('No user logged in');
+  const uploadProfilePhoto = async (file: File): Promise<string> => {
+    if (!currentUser) throw new Error('No user logged in');
     
-    // const storageRef = ref(storage, `users/${currentUser.uid}/profile.jpg`);
-    // await uploadBytes(storageRef, file);
-    // return await getDownloadURL(storageRef);
+    const storageRef = ref(storage, `users/${currentUser.uid}/profile.jpg`);
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
   };
 
   const uploadGroupImage = async (file: File): Promise<string> => {

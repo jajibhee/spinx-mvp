@@ -1,5 +1,5 @@
 // src/pages/LoginPage.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Container, 
   Box, 
@@ -7,15 +7,48 @@ import {
   TextField, 
   Button,
   Divider,
-  Paper
+  Paper,
+  Alert
 } from '@mui/material';
 import { Google as GoogleIcon } from '@mui/icons-material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Login: React.FC = () => {
-  const handleSubmit = (event: React.FormEvent) => {
+  const navigate = useNavigate();
+  const { login, loginWithGoogle } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    // Handle login logic
+    try {
+      setError('');
+      setLoading(true);
+      await login(email, password);
+      navigate('/');
+    } catch (err) {
+      setError('Failed to sign in. Please check your credentials.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setError('');
+      setLoading(true);
+      await loginWithGoogle();
+      navigate('/');
+    } catch (err) {
+      setError('Failed to sign in with Google.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,10 +65,14 @@ export const Login: React.FC = () => {
             Welcome Back
           </Typography>
 
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
           <Button
             fullWidth
             variant="outlined"
             startIcon={<GoogleIcon />}
+            onClick={handleGoogleLogin}
+            disabled={loading}
             sx={{ mt: 2, mb: 3 }}
           >
             Continue with Google
@@ -48,21 +85,28 @@ export const Login: React.FC = () => {
               fullWidth
               label="Email"
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               margin="normal"
               required
+              disabled={loading}
             />
             <TextField
               fullWidth
               label="Password"
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               margin="normal"
               required
+              disabled={loading}
             />
             
             <Button
               type="submit"
               fullWidth
               variant="contained"
+              disabled={loading}
               sx={{ mt: 3, mb: 2 }}
             >
               Sign In

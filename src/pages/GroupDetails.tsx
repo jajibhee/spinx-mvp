@@ -16,8 +16,7 @@ import {
   List,
   ListItem,
   ListItemAvatar,
-  ListItemText,
-  ListItemSecondary
+  ListItemText
 } from '@mui/material';
 import {
   Schedule as ScheduleIcon,

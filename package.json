@@ -23,7 +23,11 @@
   },
   "scripts": {
     "start": "craco start",
+    "start:staging": "NODE_ENV=staging craco start",
+    "start:prod": "NODE_ENV=production craco start",
     "build": "craco build",
+    "build:staging": "NODE_ENV=staging craco build",
+    "build:prod": "NODE_ENV=production craco build",
     "test": "craco test",
     "eject": "react-scripts eject"
   },

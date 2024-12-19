@@ -12,14 +12,21 @@ import {
   Avatar,
   Chip,
   Snackbar,
-  Alert
+  Alert,
+  IconButton,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import { ViewType, SportFilter, Player, Group, Sport } from '@/types';
 import { NEARBY_PLAYERS, NEARBY_GROUPS } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
+import MenuIcon from '@mui/icons-material/Menu';
+import { useAuth } from '@/contexts/AuthContext';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   console.log('Mock Data:', { NEARBY_PLAYERS, NEARBY_GROUPS });
   const [view, setView] = useState<ViewType>('players');
@@ -48,6 +55,29 @@ const HomePage: React.FC = () => {
     });
     // Add your connection request logic here
     // await sendConnectionRequest(playerId);
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleProfile = () => {
+    navigate('/profile');
+    handleMenuClose();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Failed to log out:', error);
+    }
+    handleMenuClose();
   };
 
   const renderPlayerCard = (player: Player) => (
@@ -95,10 +125,10 @@ const HomePage: React.FC = () => {
           <Box>
             <Typography variant="h6">{group.name}</Typography>
             <Typography variant="body2" color="text.secondary">
-              {group.type.charAt(0).toUpperCase() + group.type.slice(1)} • {group.location}
+              {group.sport.charAt(0).toUpperCase() + group.sport.slice(1)} • {group.location}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {group.members} members
+              {group.memberCount} members
             </Typography>
           </Box>
           <Button 
@@ -119,9 +149,35 @@ const HomePage: React.FC = () => {
         <Typography variant="h5" component="h1" fontWeight="bold">
           Near Me
         </Typography>
-        <Button variant="contained" color="primary" onClick={() => navigate('/create-group')}>
-          Create Group
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="contained" color="primary" onClick={() => navigate('/create-group')}>
+            Create Group
+          </Button>
+          <IconButton
+            edge="end"
+            color="inherit"
+            aria-label="menu"
+            onClick={handleMenuOpen}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+          >
+            <MenuItem onClick={handleProfile}>My Profile</MenuItem>
+            <MenuItem onClick={handleLogout}>Sign Out</MenuItem>
+          </Menu>
+        </Box>
       </Box>
 
       <ToggleButtonGroup
@@ -158,7 +214,7 @@ const HomePage: React.FC = () => {
           : NEARBY_GROUPS
               .filter(group => 
                 selectedSport === 'all' || 
-                group.type === selectedSport
+                group.sport === selectedSport
               )
               .map(renderGroupCard)
         }

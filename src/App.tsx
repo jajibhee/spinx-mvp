@@ -15,8 +15,9 @@ import GroupDetails from '@/pages/GroupDetails';
 
 const App: React.FC = () => {
   const { currentUser } = useAuth();
-  // const isAuthenticated = !!currentUser;
-  const isAuthenticated = true;
+
+  const isAuthenticated = !!currentUser;
+  // const isAuthenticated = f;
 
   return (
     <BrowserRouter>

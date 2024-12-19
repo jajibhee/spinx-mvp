@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -38,32 +38,46 @@ interface UserProfile {
 }
 
 const Profile: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, uploadProfilePhoto } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Initial profile data - replace with actual user data from backend
+  // Initialize profile with Google data if available, otherwise use defaults
   const [profile, setProfile] = useState<UserProfile>({
     displayName: currentUser?.displayName || '',
     email: currentUser?.email || '',
-    photoURL: currentUser?.photoURL,
-    bio: 'Love playing tennis and meeting new people!',
-    level: 'Intermediate',
-    sports: ['tennis'],
-    zipCode: '75223',
-    phoneNumber: ''
+    photoURL: currentUser?.photoURL || null,
+    bio: '',
+    level: 'Beginner',
+    sports: [],
+    zipCode: '',
+    phoneNumber: currentUser?.phoneNumber || ''
   });
+
+  // Update profile when currentUser changes (e.g., after Google sign-in)
+  useEffect(() => {
+    if (currentUser) {
+      setProfile(prev => ({
+        ...prev,
+        displayName: currentUser.displayName || prev.displayName,
+        email: currentUser.email || prev.email,
+        photoURL: currentUser.photoURL || prev.photoURL,
+        phoneNumber: currentUser.phoneNumber || prev.phoneNumber
+      }));
+    }
+  }, [currentUser]);
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       try {
         setLoading(true);
-        // Add your photo upload logic here
-        // const photoURL = await uploadUserPhoto(file);
-        // setProfile(prev => ({ ...prev, photoURL }));
+        setError('');
+        const photoURL = await uploadProfilePhoto(file);
+        setProfile(prev => ({ ...prev, photoURL }));
+        setSuccess('Profile photo updated successfully!');
       } catch (err) {
         setError('Failed to upload photo');
         console.error(err);
@@ -106,7 +120,7 @@ const Profile: React.FC = () => {
             Profile
           </Typography>
           {!isEditing ? (
-            <IconButton onClick={() => setIsEditing(true)}>
+            <IconButton onClick={() => setIsEditing(true)} disabled={loading}>
               <EditIcon />
             </IconButton>
           ) : (
@@ -123,6 +137,13 @@ const Profile: React.FC = () => {
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+
+        {/* Show a message if profile is incomplete */}
+        {!profile.level && !profile.sports.length && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Please complete your profile to help us match you with players and groups.
+          </Alert>
+        )}
 
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
           <Box sx={{ position: 'relative', mb: 2 }}>

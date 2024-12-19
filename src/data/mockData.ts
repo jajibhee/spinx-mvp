@@ -22,16 +22,20 @@ export const NEARBY_GROUPS: Group[] = [
   {
     id: 1,
     name: 'Tennis Club',
-    type: 'tennis',
+    sport: 'tennis',
     location: 'Local Court',
-    members: 25
+    members: [{ id: 1, name: 'John Doe' }],
+    memberCount: 25,
+    lastActive: new Date().toISOString()
   },
   {
-    id: 1,
+    id: 2,
     name: 'Tennis Tribe DTX',
-    type: 'tennis',
+    sport: 'tennis',
     location: 'Local Court',
-    members: 10
+    members: [{ id: 2, name: 'Jane Doe' }],
+    memberCount: 10,
+    lastActive: new Date().toISOString()
   }
   // Add more mock groups as needed
 ]; 
