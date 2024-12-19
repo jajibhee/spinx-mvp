@@ -1,7 +1,7 @@
 // App.tsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate} from 'react-router-dom';
-import { Box } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import Navigation from '@/components/Navigation';
 import HomePage from '@/pages/HomePage';
 import Courts from '@/pages/Courts';
@@ -13,12 +13,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import CreateGroup from '@/pages/CreateGroup';
 import GroupDetails from '@/pages/GroupDetails';
 import Requests from '@/pages/Requests';
+import Onboarding from '@/pages/Onboarding';
+import { seedDatabase } from '@/utils/seedDatabase';
 
 const App: React.FC = () => {
   const { currentUser } = useAuth();
 
   const isAuthenticated = !!currentUser;
   // const isAuthenticated = f;
+
+  // Temporary button to seed database
+  const handleSeed = async () => {
+    await seedDatabase();
+  };
 
   return (
     <BrowserRouter>
@@ -42,10 +49,17 @@ const App: React.FC = () => {
             element={isAuthenticated ? <GroupDetails /> : <Navigate to="/login" />} 
           />
           <Route path="/requests" element={<Requests />} />
+          <Route 
+            path="/onboarding" 
+            element={isAuthenticated ? <Onboarding /> : <Navigate to="/login" />} 
+          />
         </Routes>
         
         {/* Only show navigation when authenticated */}
         {isAuthenticated && <Navigation />}
+
+          <Button onClick={handleSeed}>Seed Database</Button>
+
       </Box>
     </BrowserRouter>
   );

@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { Google as GoogleIcon } from '@mui/icons-material';
 import { useAuth } from '@/contexts/AuthContext';
+import { checkOnboardingStatus } from '@/utils/auth';
 
 export const SignUp: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -23,8 +24,8 @@ export const SignUp: React.FC = () => {
   const navigate = useNavigate();
   const { signup, loginWithGoogle } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     
     if (password !== confirmPassword) {
       return setError('Passwords do not match');
@@ -33,11 +34,11 @@ export const SignUp: React.FC = () => {
     try {
       setError('');
       setLoading(true);
-      await signup(email, password);
-      navigate('/');
+      const result = await signup(email, password);
+      navigate('/onboarding'); // Always go to onboarding for new email signups
     } catch (err) {
-      console.error(err);
       setError('Failed to create an account');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -47,8 +48,11 @@ export const SignUp: React.FC = () => {
     try {
       setError('');
       setLoading(true);
-      await loginWithGoogle();
-      navigate('/');
+      const result = await loginWithGoogle();
+      
+      // Check if user needs onboarding
+      const hasCompletedOnboarding = await checkOnboardingStatus(result.user.uid);
+      navigate(hasCompletedOnboarding ? '/' : '/onboarding');
     } catch (err) {
       console.error(err);
       setError('Failed to sign up with Google');

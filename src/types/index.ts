@@ -5,6 +5,7 @@ export interface Player {
     sports: Sport[];
     level: 'Beginner' | 'Intermediate' | 'Advanced';
     distance: string;
+    availability?: Availability;
   }
   
   export interface Group {
@@ -49,6 +50,20 @@ export interface Player {
     sport: 'tennis' | 'pickleball';
   }
   
+  export interface Availability {
+    weekdays: {
+      [key in 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday']: {
+        available: boolean;
+        timeRanges?: Array<{
+          start: string; // "HH:mm" format
+          end: string;
+        }>;
+      };
+    };
+    preferredTimes: 'morning' | 'afternoon' | 'evening' | 'flexible';
+    notes?: string;
+  }
+  
   export interface UserProfile {
     displayName: string;
     email: string;
@@ -58,6 +73,7 @@ export interface Player {
     sports: Sport[];
     zipCode: string;
     phoneNumber: string;
+    availability: Availability;
   }
   
   export interface CreateGroupForm {

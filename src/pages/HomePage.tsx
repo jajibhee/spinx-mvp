@@ -16,25 +16,34 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  CircularProgress,
 } from '@mui/material';
 import { ViewType, SportFilter, Player, Group, Sport } from '@/types';
-import { NEARBY_PLAYERS, NEARBY_GROUPS } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
-import { collection, addDoc, query, where, getDocs, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, updateDoc, doc, Timestamp, getDoc, orderBy, limit, startAfter } from 'firebase/firestore';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { PlayRequestDialog } from '@/components/PlayRequestDialog';
+import { PlayerAvailabilityDisplay } from '@/components/PlayerAvailabilityDisplay';
+
+const ITEMS_PER_PAGE = 5;
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { logout, currentUser } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  console.log('Mock Data:', { NEARBY_PLAYERS, NEARBY_GROUPS });
-  const [view, setView] = useState<ViewType>('players');
-  const [selectedSport, setSelectedSport] = useState<SportFilter>('all');
+  // console.log('Mock Data:', { NEARBY_PLAYERS, NEARBY_GROUPS });
+  const [view, setView] = useState<ViewType>(() => {
+    const savedView = localStorage.getItem('homePageView');
+    return (savedView as ViewType) || 'players';
+  });
+  const [selectedSport, setSelectedSport] = useState<SportFilter>(() => {
+    const savedSport = localStorage.getItem('selectedSport');
+    return (savedSport as SportFilter) || 'all';
+  });
   const [pendingConnections, setPendingConnections] = useState<number[]>([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -44,15 +53,36 @@ const HomePage: React.FC = () => {
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (!currentUser) return;
+      
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (!userDoc.exists() || !userDoc.data().onboardingCompleted) {
+        navigate('/onboarding');
+      }
+    };
+
+    checkOnboarding();
+  }, [currentUser, navigate]);
 
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: ViewType | null) => {
     if (newView !== null) {
       setView(newView);
+      localStorage.setItem('homePageView', newView);
     }
   };
 
   const handleSportChange = (sport: SportFilter) => {
     setSelectedSport(sport);
+    localStorage.setItem('selectedSport', sport);
   };
 
   const handleConnect = (playerId: number) => {
@@ -179,40 +209,45 @@ const HomePage: React.FC = () => {
   const renderPlayerCard = (player: Player) => (
     <Card key={player.id}>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Avatar sx={{ width: 48, height: 48 }}>
-              {player.name.charAt(0)}
-            </Avatar>
-            <Box>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Avatar sx={{ width: 48, height: 48 }}>
+            {player.name.charAt(0)}
+          </Avatar>
+          <Box sx={{ flex: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">{player.name}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {player.level} • {player.distance}
-              </Typography>
-              <Box sx={{ mt: 1, display: 'flex', gap: 0.5 }}>
-                {player.sports.map(sport => (
-                  <Chip 
-                    key={sport} 
-                    label={sport} 
-                    size="small" 
-                    variant="outlined"
-                  />
-                ))}
-              </Box>
+              <Button 
+                variant="contained" 
+                color="primary"
+                size="small"
+                onClick={() => 
+                  playRequests[player.id] === 'received' 
+                    ? navigate(`/requests`) 
+                    : handleConnect(player.id)
+                }
+                disabled={playRequests[player.id] === 'sent'}
+              >
+                {getConnectButtonText(player.id)}
+              </Button>
             </Box>
+
+            <Typography variant="body2" color="text.secondary">
+              {player.level} • {player.distance}
+            </Typography>
+            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {player.sports.map(sport => (
+                <Chip 
+                  key={sport} 
+                  label={sport} 
+                  size="small" 
+                  variant="outlined"
+                />
+              ))}
+            </Box>
+            {player.availability && (
+              <PlayerAvailabilityDisplay availability={player.availability} />
+            )}
           </Box>
-          <Button 
-            variant="contained" 
-            color="primary"
-            onClick={() => 
-              playRequests[player.id] === 'received' 
-                ? navigate(`/requests`) 
-                : handleConnect(player.id)
-            }
-            disabled={playRequests[player.id] === 'sent'}
-          >
-            {getConnectButtonText(player.id)}
-          </Button>
         </Box>
       </CardContent>
     </Card>
@@ -242,6 +277,92 @@ const HomePage: React.FC = () => {
       </CardContent>
     </Card>
   );
+
+  // Move fetchData outside of useEffect
+  const fetchData = async (loadMore = false) => {
+    try {
+      if (!loadMore) {
+        setLoading(true);
+      }
+      setError('');
+
+      if (view === 'players') {
+        const playersRef = collection(db, 'players');
+        let q = selectedSport === 'all' 
+          ? query(playersRef, orderBy('name'), limit(ITEMS_PER_PAGE))
+          : query(playersRef, 
+              where('sports', 'array-contains', selectedSport),
+              orderBy('name'),
+              limit(ITEMS_PER_PAGE)
+            );
+
+        // If loading more, start after the last document
+        if (loadMore && lastDoc) {
+          q = selectedSport === 'all'
+            ? query(playersRef, orderBy('name'), startAfter(lastDoc), limit(ITEMS_PER_PAGE))
+            : query(playersRef,
+                where('sports', 'array-contains', selectedSport),
+                orderBy('name'),
+                startAfter(lastDoc),
+                limit(ITEMS_PER_PAGE)
+              );
+        }
+
+        const snapshot = await getDocs(q);
+        const fetchedPlayers = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: parseInt(doc.id)
+        })) as Player[];
+
+        setPlayers(prev => loadMore ? [...prev, ...fetchedPlayers] : fetchedPlayers);
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+        setHasMore(snapshot.docs.length === ITEMS_PER_PAGE);
+      } else {
+        // Similar logic for groups
+        const groupsRef = collection(db, 'groups');
+        let q = selectedSport === 'all'
+          ? query(groupsRef, orderBy('name'), limit(ITEMS_PER_PAGE))
+          : query(groupsRef,
+              where('sport', '==', selectedSport),
+              orderBy('name'),
+              limit(ITEMS_PER_PAGE)
+            );
+
+        if (loadMore && lastDoc) {
+          q = selectedSport === 'all'
+            ? query(groupsRef, orderBy('name'), startAfter(lastDoc), limit(ITEMS_PER_PAGE))
+            : query(groupsRef,
+                where('sport', '==', selectedSport),
+                orderBy('name'),
+                startAfter(lastDoc),
+                limit(ITEMS_PER_PAGE)
+              );
+        }
+
+        const snapshot = await getDocs(q);
+        const fetchedGroups = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: parseInt(doc.id)
+        })) as Group[];
+
+        setGroups(prev => loadMore ? [...prev, ...fetchedGroups] : fetchedGroups);
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+        setHasMore(snapshot.docs.length === ITEMS_PER_PAGE);
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Keep the useEffect
+  useEffect(() => {
+    setLastDoc(null);
+    setHasMore(true);
+    fetchData();
+  }, [view, selectedSport]);
 
   return (
     <Container maxWidth="sm" sx={{ pb: 8, pt: 2 }}>
@@ -304,22 +425,46 @@ const HomePage: React.FC = () => {
         ))}
       </ButtonGroup>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {view === 'players'
-          ? NEARBY_PLAYERS
-              .filter(player => 
-                selectedSport === 'all' || 
-                player.sports.includes(selectedSport as Sport)
-              )
-              .map(renderPlayerCard)
-          : NEARBY_GROUPS
-              .filter(group => 
-                selectedSport === 'all' || 
-                group.sport === selectedSport
-              )
-              .map(renderGroupCard)
-        }
-      </Box>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {loading && !players.length && !groups.length ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {view === 'players'
+              ? players.map(renderPlayerCard)
+              : groups.map(renderGroupCard)
+            }
+          </Box>
+
+          {hasMore && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <Button
+                variant="outlined"
+                onClick={() => fetchData(true)}
+                disabled={loading}
+                startIcon={loading && <CircularProgress size={20} />}
+              >
+                {loading ? 'Loading...' : 'Show More'}
+              </Button>
+            </Box>
+          )}
+
+          {!loading && ((view === 'players' && players.length === 0) || 
+            (view === 'communities' && groups.length === 0)) && (
+            <Typography color="text.secondary" align="center">
+              No {view} found for the selected sport
+            </Typography>
+          )}
+        </>
+      )}
 
       <PlayRequestDialog
         open={dialogOpen}

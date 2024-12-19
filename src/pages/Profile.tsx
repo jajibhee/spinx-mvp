@@ -24,7 +24,9 @@ import {
   Cancel as CancelIcon
 } from '@mui/icons-material';
 import { useAuth } from '@/contexts/AuthContext';
-import { Sport } from '@/types';
+import { Sport, Availability } from '@/types';
+import { AvailabilityEditor } from '@/components/AvailabilityEditor';
+import { defaultAvailability } from '@/utils/defaults';
 
 interface UserProfile {
   displayName: string;
@@ -35,6 +37,7 @@ interface UserProfile {
   sports: Sport[];
   zipCode: string;
   phoneNumber: string;
+  availability: Availability;
 }
 
 const Profile: React.FC = () => {
@@ -53,7 +56,8 @@ const Profile: React.FC = () => {
     level: 'Beginner',
     sports: [],
     zipCode: '',
-    phoneNumber: currentUser?.phoneNumber || ''
+    phoneNumber: currentUser?.phoneNumber || '',
+    availability: defaultAvailability
   });
 
   // Update profile when currentUser changes (e.g., after Google sign-in)
@@ -277,6 +281,21 @@ const Profile: React.FC = () => {
             </Stack>
           </Box>
         </Stack>
+
+        <Divider sx={{ my: 3 }} />
+        
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Availability
+          </Typography>
+          <AvailabilityEditor
+            value={profile.availability}
+            onChange={(newAvailability) => 
+              setProfile(prev => ({ ...prev, availability: newAvailability }))
+            }
+            disabled={!isEditing}
+          />
+        </Box>
       </Paper>
     </Container>
   );

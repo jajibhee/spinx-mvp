@@ -17,9 +17,9 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface AuthContextType {
   currentUser: User | null;
-  signup: (email: string, password: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  signup: (email: string, password: string) => Promise<any>;
+  login: (email: string, password: string) => Promise<any>;
+  loginWithGoogle: () => Promise<any>;
   logout: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   uploadProfilePhoto: (file: File) => Promise<string>;
@@ -48,19 +48,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signup = async (email: string, password: string) => {
-    const { user } = await createUserWithEmailAndPassword(auth, email, password);
-    setCurrentUser(user);
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    setCurrentUser(result.user);
+    return result;
   };
 
   const login = async (email: string, password: string) => {
-    const { user } = await signInWithEmailAndPassword(auth, email, password);
-    setCurrentUser(user);
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    setCurrentUser(result.user);
+    return result;
   };
 
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    const { user } = await signInWithPopup(auth, provider);
-    setCurrentUser(user);
+    const result = await signInWithPopup(auth, provider);
+    setCurrentUser(result.user);
+    return result;
   };
 
   const logout = () => signOut(auth);

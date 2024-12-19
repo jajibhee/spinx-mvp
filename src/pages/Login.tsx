@@ -13,6 +13,7 @@ import {
 import { Google as GoogleIcon } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { checkOnboardingStatus } from '@/utils/auth';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -27,8 +28,11 @@ export const Login: React.FC = () => {
     try {
       setError('');
       setLoading(true);
-      await login(email, password);
-      navigate('/');
+      const result = await login(email, password);
+      
+      // Check if user needs onboarding
+      const hasCompletedOnboarding = await checkOnboardingStatus(result.user.uid);
+      navigate(hasCompletedOnboarding ? '/' : '/onboarding');
     } catch (err) {
       setError('Failed to sign in. Please check your credentials.');
       console.error(err);
@@ -41,10 +45,13 @@ export const Login: React.FC = () => {
     try {
       setError('');
       setLoading(true);
-      await loginWithGoogle();
-      navigate('/');
+      const result = await loginWithGoogle();
+      
+      // Check if user needs onboarding
+      const hasCompletedOnboarding = await checkOnboardingStatus(result.user.uid);
+      navigate(hasCompletedOnboarding ? '/' : '/onboarding');
     } catch (err) {
-      setError('Failed to sign in with Google.');
+      setError('Failed to sign in with Google');
       console.error(err);
     } finally {
       setLoading(false);
