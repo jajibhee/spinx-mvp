@@ -68,23 +68,20 @@ const MOCK_GROUPS: Group[] = [
     name: 'Dallas Tennis Club',
     sport: 'tennis',
     location: 'Fretz Tennis Center',
-    members: [
-      { id: 'user1', name: 'Alex Thompson' },
-      { id: 'user2', name: 'Sarah Chen' }
-    ],
+    members: ['user1'],
     memberCount: 25,
-    lastActive: new Date().toISOString()
+    lastActive: new Date().toISOString(),
+    createdBy: 'user1'
   },
   {
     id: 'group2',
     name: 'Pickleball Pros',
     sport: 'pickleball',
     location: 'Lifetime Fitness',
-    members: [
-      { id: 'user1', name: 'Alex Thompson' }
-    ],
+    members: ['user1'],
     memberCount: 15,
-    lastActive: new Date().toISOString()
+    lastActive: new Date().toISOString(),
+    createdBy: 'user1'
   }
 ];
 

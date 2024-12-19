@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -9,9 +9,8 @@ import {
   Button,
   Divider,
   AvatarGroup,
-  Grid,
-  Tab,
   Tabs,
+  Tab,
   Alert,
   List,
   ListItem,
@@ -26,8 +25,11 @@ import {
   Lock as LockIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Group } from '@/types';
+import { doc, getDoc, addDoc, collection, query, where, getDocs, updateDoc, arrayUnion, increment } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { Group, GroupRequest } from '@/types';
 import GroupChat from '@/components/GroupChat';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -41,90 +43,173 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
   </div>
 );
 
-const GroupDetails: React.FC = () => {
-  const { groupId } = useParams();
-  const navigate = useNavigate();
-  const [tabValue, setTabValue] = useState(0);
-  const [joinStatus, setJoinStatus] = useState<'none' | 'pending' | 'member'>('none');
+interface UserDetails {
+  id: string;
+  displayName: string;
+  photoURL: string | null;
+}
 
-  // Mock data - replace with actual data fetching
-  const group = {
-    id: 1,
-    name: "Tennis Club DTX",
-    sport: "tennis",
-    description: "Weekly tennis meetups for intermediate players in Dallas area.",
-    location: "Dallas Tennis Center",
-    memberCount: 25,
-    maxMembers: 30,
-    skillLevel: "Intermediate",
-    schedule: [
-      { day: "Monday", time: "7:00 PM - 9:00 PM", recurring: true },
-      { day: "Saturday", time: "9:00 AM - 11:00 AM", recurring: true }
-    ],
-    members: [
-      { id: 1, name: "John Doe", role: "Admin", avatar: null },
-      { id: 2, name: "Jane Smith", role: "Member", avatar: null },
-      // Add more members...
-    ],
-    tags: ["Competitive", "Weekly Meetups", "Social"],
-    imageUrl: null
-  };
+const GroupDetails: React.FC = () => {
+  const { groupId } = useParams<{ groupId: string }>();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const [group, setGroup] = useState<Group | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [tabValue, setTabValue] = useState(0);
+  const [memberDetails, setMemberDetails] = useState<UserDetails[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<GroupRequest[]>([]);
+  const isAdmin = group?.createdBy === currentUser?.uid;
+  const [requestSent, setRequestSent] = useState(false);
+
+  useEffect(() => {
+    const fetchGroup = async () => {
+      if (!groupId) return;
+      
+      try {
+        setLoading(true);
+        const groupDoc = await getDoc(doc(db, 'groups', groupId));
+        
+        if (groupDoc.exists()) {
+          setGroup({
+            id: groupDoc.id,
+            ...groupDoc.data()
+          } as Group);
+        } else {
+          setError('Group not found');
+        }
+      } catch (err) {
+        console.error('Error fetching group:', err);
+        setError('Failed to load group');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGroup();
+  }, [groupId]);
+
+  useEffect(() => {
+    if (!group?.members) return;
+
+    const fetchMemberDetails = async () => {
+      try {
+        const userDocs = await Promise.all(
+          group.members.map(id => getDoc(doc(db, 'users', id)))
+        );
+
+        setMemberDetails(userDocs.map(doc => ({
+          id: doc.id,
+          displayName: doc.data()?.displayName || 'Unknown User',
+          photoURL: doc.data()?.photoURL
+        })));
+      } catch (error) {
+        console.error('Error fetching member details:', error);
+      }
+    };
+
+    fetchMemberDetails();
+  }, [group?.members]);
+
+  useEffect(() => {
+    if (!groupId) return;
+
+    const fetchPendingRequests = async () => {
+      try {
+        const q = query(
+          collection(db, 'groupRequests'),
+          where('groupId', '==', groupId),
+          where('status', '==', 'pending')
+        );
+
+        const snapshot = await getDocs(q);
+        setPendingRequests(snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as GroupRequest[]);
+      } catch (error) {
+        console.error('Error fetching requests:', error);
+      }
+    };
+
+    fetchPendingRequests();
+  }, [groupId]);
+
+  useEffect(() => {
+    if (!currentUser || !groupId) return;
+
+    const checkExistingRequest = async () => {
+      const q = query(
+        collection(db, 'groupRequests'),
+        where('groupId', '==', groupId),
+        where('userId', '==', currentUser.uid),
+        where('status', '==', 'pending')
+      );
+
+      const snapshot = await getDocs(q);
+      setRequestSent(!snapshot.empty);
+    };
+
+    checkExistingRequest();
+  }, [groupId, currentUser]);
+
+  const isMember = group?.members?.includes(currentUser?.uid || '');
 
   const handleJoin = async () => {
+    if (!currentUser || !group || requestSent) return;
+    
     try {
-      // Add your join request logic here
-      // await sendJoinRequest(groupId);
-      setJoinStatus('pending');
+      await addDoc(collection(db, 'groupRequests'), {
+        groupId: group.id,
+        groupName: group.name,
+        userId: currentUser.uid,
+        userName: currentUser.displayName,
+        userPhotoURL: currentUser.photoURL,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
+      
+      setRequestSent(true);
     } catch (error) {
       console.error('Failed to send join request:', error);
     }
   };
 
-  const renderJoinButton = () => {
-    switch (joinStatus) {
-      case 'pending':
-        return (
-          <Button
-            variant="outlined"
-            disabled
-            startIcon={<LockIcon />}
-            fullWidth
-          >
-            Request Pending
-          </Button>
-        );
-      case 'member':
-        return (
-          <Button
-            variant="contained"
-            startIcon={<ChatIcon />}
-            fullWidth
-          >
-            Open Chat
-          </Button>
-        );
-      default:
-        return (
-          <Button
-            variant="contained"
-            onClick={handleJoin}
-            fullWidth
-          >
-            Request to Join
-          </Button>
-        );
+  const handleRequest = async (requestId: string, action: 'accept' | 'decline') => {
+    try {
+      const requestRef = doc(db, 'groupRequests', requestId);
+      await updateDoc(requestRef, { status: action });
+
+      if (action === 'accept' && group) {
+        const request = pendingRequests.find(r => r.id === requestId);
+        if (request) {
+          const groupRef = doc(db, 'groups', group.id);
+          await updateDoc(groupRef, {
+            members: arrayUnion(request.userId),
+            memberCount: increment(1)
+          });
+        }
+      }
+
+      setPendingRequests(prev => prev.filter(req => req.id !== requestId));
+    } catch (error) {
+      console.error('Error handling request:', error);
     }
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
+  if (!group) return <div>Group not found</div>;
 
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
       <Paper sx={{ p: 3, mb: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
           <Avatar
-            src={group.imageUrl || undefined}
+            src={group.imageUrl}
             sx={{ width: 100, height: 100, mb: 2 }}
           >
-            {group.name.charAt(0)}
+            {group.name[0]}
           </Avatar>
           <Typography variant="h5" gutterBottom align="center">
             {group.name}
@@ -133,14 +218,17 @@ const GroupDetails: React.FC = () => {
             <Chip label={group.sport} />
             <Chip label={group.skillLevel} variant="outlined" />
           </Box>
-          {renderJoinButton()}
+          {!isMember && (
+            <Button
+              variant="contained"
+              onClick={handleJoin}
+              fullWidth
+              disabled={requestSent}
+            >
+              {requestSent ? 'Request Sent' : 'Request to Join'}
+            </Button>
+          )}
         </Box>
-
-        {joinStatus === 'pending' && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Your request to join is pending approval from the group admin.
-          </Alert>
-        )}
 
         <Tabs
           value={tabValue}
@@ -150,8 +238,8 @@ const GroupDetails: React.FC = () => {
         >
           <Tab label="About" />
           <Tab label="Members" />
-          <Tab label="Schedule" />
-          {joinStatus === 'member' && <Tab label="Chat" />}
+          {group.schedule && <Tab label="Schedule" />}
+          {isMember && <Tab label="Chat" />}
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -166,59 +254,104 @@ const GroupDetails: React.FC = () => {
             </Typography>
           </Box>
 
-          <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
-            Tags
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {group.tags.map(tag => (
-              <Chip key={tag} label={tag} size="small" variant="outlined" />
-            ))}
-          </Box>
+          {group.tags && (
+            <>
+              <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
+                Tags
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {group.tags.map(tag => (
+                  <Chip key={tag} label={tag} size="small" variant="outlined" />
+                ))}
+              </Box>
+            </>
+          )}
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            {group.memberCount || 0} members
+          </Typography>
           <List>
-            {group.members.map(member => (
+            {memberDetails.map(member => (
               <ListItem key={member.id}>
                 <ListItemAvatar>
-                  <Avatar src={member.avatar || undefined}>
-                    {member.name.charAt(0)}
+                  <Avatar src={member.photoURL || undefined}>
+                    {member.displayName[0]}
                   </Avatar>
                 </ListItemAvatar>
-                <ListItemText
-                  primary={member.name}
-                  secondary={member.role}
-                />
+                <ListItemText primary={member.displayName} />
               </ListItem>
             ))}
           </List>
+
+          {isAdmin && pendingRequests.length > 0 && (
+            <>
+              <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
+                Pending Requests
+              </Typography>
+              <List>
+                {pendingRequests.map(request => (
+                  <ListItem
+                    key={request.id}
+                    secondaryAction={
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => handleRequest(request.id, 'accept')}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          onClick={() => handleRequest(request.id, 'decline')}
+                        >
+                          Decline
+                        </Button>
+                      </Box>
+                    }
+                  >
+                    <ListItemAvatar>
+                      <Avatar src={request.userPhotoURL || undefined}>
+                        {request.userName[0]}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText 
+                      primary={request.userName}
+                      secondary="Wants to join"
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          )}
         </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
-          {group.schedule.map((slot, index) => (
-            <Box key={index} sx={{ mb: 2 }}>
-              <Typography variant="subtitle2">
-                {slot.day}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {slot.time} • {slot.recurring ? 'Weekly' : 'One-time'}
-              </Typography>
-            </Box>
-          ))}
-        </TabPanel>
+        {group.schedule && (
+          <TabPanel value={tabValue} index={2}>
+            {group.schedule.map((slot, index) => (
+              <Box key={index} sx={{ mb: 2 }}>
+                <Typography variant="subtitle2">
+                  {slot.day}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {slot.startTime} - {slot.endTime} • {slot.recurring ? 'Weekly' : 'One-time'}
+                </Typography>
+              </Box>
+            ))}
+          </TabPanel>
+        )}
 
-              <GroupChat groupId={groupId!} />
-
-        {/* {joinStatus === 'member' && (
+        {isMember && (
           <TabPanel value={tabValue} index={3}>
             <Box sx={{ height: '60vh' }}>
-              <GroupChat groupId={groupId!} />
+              <GroupChat groupId={groupId ?? ''} />
             </Box>
           </TabPanel>
-        )} */}
-
-       
-
+        )}
       </Paper>
     </Container>
   );

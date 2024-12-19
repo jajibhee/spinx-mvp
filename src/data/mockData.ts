@@ -75,21 +75,23 @@ export const NEARBY_PLAYERS: Player[] = [
 export const NEARBY_GROUPS: Group[] = [
   {
     id: 'group1',
-    name: 'Tennis Club',
+    name: 'Dallas Tennis Club',
     sport: 'tennis',
-    location: 'Local Court',
-    members: [{ id: 'user1', name: 'John Doe' }],
+    location: 'Fretz Tennis Center',
+    members: ['user1'],
     memberCount: 25,
-    lastActive: new Date().toISOString()
+    lastActive: new Date().toISOString(),
+    createdBy: 'user1'
   },
   {
     id: 'group2',
-    name: 'Tennis Tribe DTX',
-    sport: 'tennis',
-    location: 'Local Court',
-    members: [{ id: 'user2', name: 'Jane Doe' }],
-    memberCount: 10,
-    lastActive: new Date().toISOString()
+    name: 'Pickleball Pros',
+    sport: 'pickleball',
+    location: 'Lifetime Fitness',
+    members: ['user1'],
+    memberCount: 15,
+    lastActive: new Date().toISOString(),
+    createdBy: 'user1'
   }
   // Add more mock groups as needed
 ]; 

@@ -34,6 +34,8 @@ import {
 } from '@mui/icons-material';
 import { Sport, Court, CreateGroupForm } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { addDoc, collection } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 const DAYS_OF_WEEK = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
@@ -93,26 +95,25 @@ const CreateGroup: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.sport || !formData.location || !formData.skillLevel) {
-      setError('Please fill in all required fields');
-      return;
-    }
+    if (!currentUser) return;
 
     try {
       setLoading(true);
       setError('');
 
-      // Add your group creation logic here
-      // const groupData = {
-      //   ...formData,
-      //   createdBy: currentUser.uid,
-      //   createdAt: new Date().toISOString(),
-      //   members: [currentUser.uid],
-      //   active: true
-      // };
-      // await createGroup(groupData);
+      // Create the group document
+      const groupData = {
+        ...formData,
+        createdBy: currentUser.uid,
+        createdAt: new Date().toISOString(),
+        members: [currentUser.uid], // Store member IDs
+        memberCount: 1,
+        lastActive: new Date().toISOString()
+      };
 
+      const docRef = await addDoc(collection(db, 'groups'), groupData);
+      
+      console.log('Group created with ID:', docRef.id);
       navigate('/groups');
     } catch (err) {
       console.error('Error creating group:', err);

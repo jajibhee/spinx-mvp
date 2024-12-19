@@ -23,10 +23,22 @@ export interface Player {
     memberCount: number;
     location: string;
     lastActive: string;
-    members: {
+    members: string[];
+    createdBy: string;
+    memberDetails?: {
       id: string;
       name: string;
       avatar?: string;
+    }[];
+    imageUrl?: string;
+    description?: string;
+    skillLevel?: string;
+    tags?: string[];
+    schedule?: {
+      day: string;
+      startTime: string;
+      endTime: string;
+      recurring: boolean;
     }[];
   }
   
@@ -110,9 +122,21 @@ export interface Player {
       id: string;
       name: string;
       photoURL: string | null;
+      email: string;
+      phoneNumber?: string;
     }[];
     sport: Sport;
     createdAt: string;
-    lastPlayedAt: string;
     status: 'active' | 'inactive';
+  }
+  
+  export interface GroupRequest {
+    id: string;
+    groupId: string;
+    groupName: string;
+    userId: string;
+    userName: string;
+    userPhotoURL: string | null;
+    status: 'pending' | 'accepted' | 'declined';
+    createdAt: string;
   }
