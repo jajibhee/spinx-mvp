@@ -45,13 +45,17 @@ export interface Player {
   export interface Court {
     id: string;
     name: string;
-    type: 'tennis' | 'pickleball';
     location: string;
+    type: Sport;
     distance: string;
     rating: number;
     numberOfCourts: number;
-    isFavorite?: boolean;
-    amenities: string[];
+    photo?: string;
+    url?: string;
+    openingHours?: string[];
+    phoneNumber?: string;
+    isIndoor: boolean;
+    placeDetails: any;
   }
   
   export type Sport = 'tennis' | 'pickleball';
