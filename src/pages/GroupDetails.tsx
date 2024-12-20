@@ -56,11 +56,20 @@ const GroupDetails: React.FC = () => {
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tabValue, setTabValue] = useState(0);
   const [memberDetails, setMemberDetails] = useState<UserDetails[]>([]);
   const [pendingRequests, setPendingRequests] = useState<GroupRequest[]>([]);
-  const isAdmin = group?.createdBy === currentUser?.uid;
   const [requestSent, setRequestSent] = useState(false);
+
+  const [tabValue, setTabValue] = useState(0);
+
+  const isAdmin = group?.createdBy === currentUser?.uid;
+  const isMember = group?.members?.includes(currentUser?.uid || '');
+
+  useEffect(() => {
+    if (isAdmin || isMember) {
+      setTabValue(3);
+    }
+  }, [group, currentUser, isAdmin, isMember]);
 
   useEffect(() => {
     const fetchGroup = async () => {
@@ -152,8 +161,6 @@ const GroupDetails: React.FC = () => {
 
     checkExistingRequest();
   }, [groupId, currentUser]);
-
-  const isMember = group?.members?.includes(currentUser?.uid || '');
 
   const handleJoin = async () => {
     if (!currentUser || !group || requestSent) return;

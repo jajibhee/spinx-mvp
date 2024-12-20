@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -13,48 +13,64 @@ import {
   Divider
 } from '@mui/material';
 import { Send as SendIcon } from '@mui/icons-material';
-
-interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderAvatar?: string;
-  content: string;
-  timestamp: string;
-}
+import { collection, query, where, orderBy, addDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { Message } from '@/types';
 
 interface GroupChatProps {
   groupId: string;
 }
 
 const GroupChat: React.FC<GroupChatProps> = ({ groupId }) => {
+  const { currentUser } = useAuth();
   const [message, setMessage] = useState('');
-  
-  // Mock data - replace with actual messages from your backend
-  const messages: Message[] = [
-    {
-      id: '1',
-      senderId: '1',
-      senderName: 'John Doe',
-      content: 'Hey everyone! Whos up for a game this Saturday?',
-      timestamp: '2024-03-16T10:30:00Z'
-    },
-    {
-      id: '2',
-      senderId: '2',
-      senderName: 'Jane Smith',
-      content: 'Im in! The usual time?',
-      timestamp: '2024-03-16T10:31:00Z'
-    },
-    // Add more messages...
-  ];
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  // Subscribe to messages
+  useEffect(() => {
+    if (!groupId) return;
+
+    console.log('Setting up listener...');
+
+    const q = query(
+      collection(db, 'messages'),
+      where('groupId', '==', groupId),
+      orderBy('createdAt', 'desc')
+    );
+
+    // onSnapshot is called immediately and returns an unsubscribe function
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('Received message update!');
+      const newMessages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Message[];
+      
+      setMessages(newMessages);
+    });
+
+    // This cleanup function is only called when component unmounts
+    // or when groupId changes
+    return () => {
+      console.log('Cleaning up listener...');
+      unsubscribe();
+    };
+  }, [groupId]);
 
   const handleSend = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !currentUser) return;
 
     try {
-      // Add your message sending logic here
-      // await sendMessage(groupId, message);
+      await addDoc(collection(db, 'messages'), {
+        groupId,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || 'Anonymous',
+        senderPhotoURL: currentUser.photoURL,
+        content: message.trim(),
+        createdAt: new Date().toISOString()
+      });
+
       setMessage('');
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -77,7 +93,6 @@ const GroupChat: React.FC<GroupChatProps> = ({ groupId }) => {
 
   return (
     <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Messages List */}
       <List sx={{ 
         flex: 1, 
         overflow: 'auto', 
@@ -85,43 +100,73 @@ const GroupChat: React.FC<GroupChatProps> = ({ groupId }) => {
         display: 'flex',
         flexDirection: 'column-reverse'
       }}>
-        {messages.map((msg, index) => (
-          <React.Fragment key={msg.id}>
-            <ListItem alignItems="flex-start">
-              <ListItemAvatar>
-                <Avatar src={msg.senderAvatar}>
-                  {msg.senderName.charAt(0)}
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
-                primary={
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography component="span" variant="subtitle2">
-                      {msg.senderName}
+        {messages.map((msg, index) => {
+          const isCurrentUser = msg.senderId === currentUser?.uid;
+
+          return (
+            <React.Fragment key={msg.id}>
+              <ListItem 
+                alignItems="flex-start"
+                sx={{
+                  flexDirection: isCurrentUser ? 'row-reverse' : 'row',
+                  '& .MuiListItemAvatar-root': {
+                    minWidth: 'auto',
+                    marginLeft: isCurrentUser ? 1 : 0,
+                    marginRight: isCurrentUser ? 0 : 1
+                  }
+                }}
+              >
+                <ListItemAvatar>
+                  <Avatar src={msg.senderPhotoURL || undefined}>
+                    {msg.senderName[0]}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  sx={{
+                    textAlign: isCurrentUser ? 'right' : 'left',
+                    margin: 0
+                  }}
+                  primary={
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
+                      gap: 1
+                    }}>
+                      <Typography component="span" variant="subtitle2">
+                        {isCurrentUser ? 'You' : msg.senderName}
+                      </Typography>
+                      <Typography component="span" variant="caption" color="text.secondary">
+                        {formatTime(msg.createdAt)}
+                      </Typography>
+                    </Box>
+                  }
+                  secondary={
+                    <Typography
+                      component="span"
+                      variant="body2"
+                      color="text.primary"
+                      sx={{ 
+                        whiteSpace: 'pre-wrap',
+                        display: 'inline-block',
+                        backgroundColor: isCurrentUser ? 'primary.light' : 'grey.100',
+                        color: isCurrentUser ? 'white' : 'inherit',
+                        p: 1,
+                        borderRadius: 1,
+                        maxWidth: '80%',
+                        mt: 0.5
+                      }}
+                    >
+                      {msg.content}
                     </Typography>
-                    <Typography component="span" variant="caption" color="text.secondary">
-                      {formatTime(msg.timestamp)}
-                    </Typography>
-                  </Box>
-                }
-                secondary={
-                  <Typography
-                    component="span"
-                    variant="body2"
-                    color="text.primary"
-                    sx={{ whiteSpace: 'pre-wrap' }}
-                  >
-                    {msg.content}
-                  </Typography>
-                }
-              />
-            </ListItem>
-            {index < messages.length - 1 && <Divider variant="inset" component="li" />}
-          </React.Fragment>
-        ))}
+                  }
+                />
+              </ListItem>
+              {index < messages.length - 1 && <Divider variant="inset" component="li" />}
+            </React.Fragment>
+          );
+        })}
       </List>
 
-      {/* Message Input */}
       <Box sx={{ p: 2, backgroundColor: 'background.default' }}>
         <TextField
           fullWidth

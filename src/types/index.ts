@@ -140,3 +140,13 @@ export interface Player {
     status: 'pending' | 'accepted' | 'declined';
     createdAt: string;
   }
+  
+  export interface Message {
+    id: string;
+    groupId: string;
+    senderId: string;
+    senderName: string;
+    senderPhotoURL: string | null;
+    content: string;
+    createdAt: string;
+  }
