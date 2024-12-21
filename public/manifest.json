@@ -3,15 +3,25 @@
   "name": "SpinPlay - Find Sports Partners",
   "icons": [
     {
-      "src": "spinx.png",
-      "sizes": "512x512",
+      "src": "spnx.png",
       "type": "image/png",
+      "sizes": "512x512",
       "purpose": "any maskable"
+    },
+    {
+      "src": "spnx.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "spnx.png",
+      "type": "image/png",
+      "sizes": "144x144"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
+  "theme_color": "#2E7D32",
   "background_color": "#ffffff",
   "orientation": "portrait"
 }
