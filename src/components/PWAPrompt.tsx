@@ -1,76 +1,99 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, Snackbar } from '@mui/material';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogContent, Typography, IconButton } from '@mui/material';
+import { Close as CloseIcon, Share as ShareIcon, AddBox as AddBoxIcon } from '@mui/icons-material';
 
-const PWAPrompt: React.FC = () => {
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+const PWAPrompt = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    // Check if user is on mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    // Only show for mobile users who haven't dismissed or installed
-    if (isMobile && !localStorage.getItem('pwaPromptDismissed')) {
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-        setShowPrompt(true);
-      });
-    }
+    // Check if device is iOS
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    setIsIOS(iOS);
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', () => {});
-    };
+    // Check if already installed
+    const standalone = window.matchMedia('(display-mode: standalone)').matches;
+    setIsStandalone(standalone);
+
+    // Show prompt if not installed
+    const shouldShow = !standalone && !localStorage.getItem('pwaPromptDismissed');
+    setIsOpen(shouldShow);
   }, []);
 
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setShowPrompt(false);
-        setDeferredPrompt(null);
-      }
-    }
+  const handleDismiss = () => {
+    localStorage.setItem('pwaPromptDismissed', 'true');
+    setIsOpen(false);
   };
 
-  const handleDismiss = () => {
-    setShowPrompt(false);
-    localStorage.setItem('pwaPromptDismissed', 'true');
-  };
+  if (isStandalone) return null;
 
   return (
-    <Snackbar 
-      open={showPrompt} 
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-    >
-      <Alert 
-        severity="info"
-        action={
-          <>
-            <Button
-              color="primary"
-              size="small"
-              startIcon={<DownloadIcon />}
-              onClick={handleInstall}
-              sx={{ mr: 1 }}
-            >
-              Install
-            </Button>
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={handleDismiss}
-            >
-              Dismiss
-            </Button>
-          </>
+    <Dialog 
+      open={isOpen} 
+      onClose={handleDismiss}
+      PaperProps={{
+        sx: { 
+          borderRadius: 2,
+          maxWidth: 'sm',
+          m: 2
         }
-      >
-        Install SpinPlay for a better experience
-      </Alert>
-    </Snackbar>
+      }}
+    >
+      <DialogContent sx={{ p: 3 }}>
+        <IconButton
+          onClick={handleDismiss}
+          sx={{ position: 'absolute', right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+
+        <Typography variant="h6" gutterBottom>
+          Install SpinPlay App
+        </Typography>
+
+        {isIOS ? (
+          <Box>
+            <Typography paragraph>
+              Install SpinPlay on your iPhone:
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <ShareIcon />
+              <Typography>
+                1. Tap the Share button
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AddBoxIcon />
+              <Typography>
+                2. Tap 'Add to Home Screen'
+              </Typography>
+            </Box>
+          </Box>
+        ) : (
+          <Box>
+            <Typography paragraph>
+              Install SpinPlay on your device:
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AddBoxIcon />
+              <Typography>
+                Tap 'Install' when prompted or use menu to 'Add to Home Screen'
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
+        <Button 
+          fullWidth 
+          variant="contained" 
+          onClick={handleDismiss}
+          sx={{ mt: 3 }}
+        >
+          Got it
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 };
 

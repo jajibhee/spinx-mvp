@@ -16,6 +16,7 @@ import Requests from '@/pages/Requests';
 import Onboarding from '@/pages/Onboarding';
 import { seedDatabase } from '@/utils/seedDatabase';
 import { Header } from '@/components/Header';
+import PWAPrompt from '@/components/PWAPrompt';
 
 const App: React.FC = () => {
   const { currentUser } = useAuth();
@@ -43,6 +44,7 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
+      <PWAPrompt />
       <Routes>
         {/* Auth Routes - No Navigation */}
         <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
