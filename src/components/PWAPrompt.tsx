@@ -10,7 +10,7 @@ const PWAPrompt = () => {
   useEffect(() => {
     // Check if device is iOS
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    setIsIOS(iOS);
+    setIsIOS(true);
 
     // Check if already installed
     const standalone = window.matchMedia('(display-mode: standalone)').matches;

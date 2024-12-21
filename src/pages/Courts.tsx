@@ -143,6 +143,7 @@ const Courts: React.FC = () => {
   const [expandedHours, setExpandedHours] = useState<string[]>([]);
   const [venueFilter, setVenueFilter] = useState<'all' | 'indoor' | 'outdoor'>('all');
   const [priceFilter, setPriceFilter] = useState<'all' | 'free' | 'paid'>('all');
+  const [mapsError, setMapsError] = useState('');
 
   // Reset filters when changing location or sport
   const resetFilters = () => {
@@ -253,6 +254,12 @@ const Courts: React.FC = () => {
     return matchesVenue && matchesPrice;
   });
 
+  useEffect(() => {
+    if (!window.google) {
+      setMapsError('Google Maps failed to load. Please try again later.');
+    }
+  }, []);
+
   return (
     <Container sx={styles.container}>
       <Typography variant="h5" sx={styles.header}>
@@ -345,6 +352,12 @@ const Courts: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {mapsError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {mapsError}
         </Alert>
       )}
 
