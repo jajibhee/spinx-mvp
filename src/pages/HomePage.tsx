@@ -35,8 +35,11 @@ const styles = {
   container: {
     pb: 8, 
     pt: 7,
-    px: { xs: 2, sm: 3 }, // Tighter padding on mobile
-    maxWidth: '600px'
+    maxWidth: '600px',
+    mx: 'auto'
+  },
+  content: {
+    px: { xs: 2, sm: 3 }
   },
   header: {
     display: 'flex', 
@@ -179,6 +182,10 @@ const styles = {
     '& .MuiChip-root': {
       justifyContent: { xs: 'center', sm: 'flex-start' }
     }
+  },
+  logoContainer: {
+    display: 'flex',
+    alignItems: 'center'
   }
 } as const;
 
@@ -529,193 +536,202 @@ const HomePage: React.FC = () => {
 
   return (
     <Container sx={styles.container} disableGutters>
-      <Box sx={styles.header}>
-        <Typography sx={styles.headerTitle}>
-          Near Me
-        </Typography>
-        <Box sx={styles.headerActions}>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            onClick={() => navigate('/create-group')}
-            size="small"
-            startIcon={<AddIcon />}
-            sx={styles.actionButton}
-          >
-            Create Group
-          </Button>
-          <NotificationBadge />
-          <IconButton
-            edge="end"
-            color="inherit"
-            onClick={handleMenuOpen}
-            sx={{ ml: 0.5 }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleMenuClose}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'right',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-          >
-            <MenuItem onClick={handleProfile}>My Profile</MenuItem>
-            <MenuItem onClick={handleLogout}>Sign Out</MenuItem>
-          </Menu>
-        </Box>
-      </Box>
-
-      <ToggleButtonGroup
-        value={view}
-        exclusive
-        onChange={handleViewChange}
-        fullWidth
-        sx={styles.toggleGroup}
-      >
-        <ToggleButton value="players">Players</ToggleButton>
-        <ToggleButton value="communities">Communities</ToggleButton>
-      </ToggleButtonGroup>
-
-      <Box sx={styles.filterButtons}>
-        {(['all', 'tennis', 'pickleball'] as const).map((sport) => (
-          <Button
-            key={sport}
-            variant={selectedSport === sport ? 'contained' : 'outlined'}
-            onClick={() => handleSportChange(sport)}
-            sx={styles.actionButton}
-          >
-            {sport === 'all' ? 'All Sports' : sport.charAt(0).toUpperCase() + sport.slice(1)}
-          </Button>
-        ))}
-      </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {loading && !players.length && !groups.length ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {view === 'players'
-              ? players.map(player => (
-                  <Card key={player.id} sx={styles.playerCard}>
-                    <CardContent sx={styles.cardContent}>
-                      <Box sx={styles.playerInfo}>
-                        <Avatar 
-                          src={player.photoURL || undefined}
-                          sx={styles.playerAvatar}
-                        >
-                          {player.name[0]}
-                        </Avatar>
-                        <Box sx={{ flex: 1 }}>
-                          <Box sx={styles.playerHeader}>
-                            <Typography sx={styles.playerName}>
-                              {player.name}
-                            </Typography>
-                            <Button 
-                              variant="contained" 
-                              color="primary"
-                              size="small"
-                              sx={styles.actionButton}
-                              onClick={() => 
-                                playRequests[player.id] === 'received' 
-                                  ? navigate(`/requests`) 
-                                  : handleConnect(player.id)
-                              }
-                              disabled={
-                                playRequests[player.id] === 'sent' || 
-                                player.id === currentUser?.uid ||
-                                isConnected(player.id)
-                              }
-                            >
-                              {player.id === currentUser?.uid ? 'You' : getConnectButtonText(player.id)}
-                            </Button>
-                          </Box>
-
-                          <Typography sx={styles.playerMeta}>
-                            {player.level} • {player.distance}
-                          </Typography>
-
-                          <Box sx={styles.playerChips}>
-                            {player.sports.map(sport => (
-                              <Chip 
-                                key={sport} 
-                                label={sport} 
-                                size="small" 
-                                variant="outlined"
-                                sx={{ borderRadius: 1.5 }}
-                              />
-                            ))}
-                          </Box>
-
-                          {player.availability && (
-                            <Box sx={styles.availabilitySection}>
-                              <PlayerAvailabilityDisplay availability={player.availability} />
-                            </Box>
-                          )}
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))
-              : groups.map(renderGroupCard)
-            }
+      <Box sx={styles.content}>
+        <Box sx={styles.header}>
+          <Box sx={styles.logoContainer}>
+            <img 
+              src="/spnx.png" 
+              alt="SpnX"
+              style={{
+                height: 100,
+                width: 100
+              }}
+            />
           </Box>
+          <Box sx={styles.headerActions}>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={() => navigate('/create-group')}
+              size="small"
+              startIcon={<AddIcon />}
+              sx={styles.actionButton}
+            >
+              Create Group
+            </Button>
+            <NotificationBadge />
+            <IconButton
+              edge="end"
+              color="inherit"
+              onClick={handleMenuOpen}
+              sx={{ ml: 0.5 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+            >
+              <MenuItem onClick={handleProfile}>My Profile</MenuItem>
+              <MenuItem onClick={handleLogout}>Sign Out</MenuItem>
+            </Menu>
+          </Box>
+        </Box>
 
-          {hasMore && (
-            <Box sx={styles.loadMoreButton}>
-              <Button
-                variant="outlined"
-                onClick={() => fetchData(true)}
-                disabled={loading}
-                startIcon={loading && <CircularProgress size={20} />}
-                sx={styles.actionButton}
-              >
-                {loading ? 'Loading...' : 'Show More'}
-              </Button>
-            </Box>
-          )}
-        </>
-      )}
-
-      <PlayRequestDialog
-        open={dialogOpen}
-        onClose={() => {
-          setDialogOpen(false);
-          setSelectedPlayerId(null);
-        }}
-        onSubmit={handleSendRequest}
-        sport={selectedSport === 'all' ? 'tennis' : selectedSport}
-        loading={sendingRequest}
-      />
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity="success"
-          sx={{ width: '100%' }}
+        <ToggleButtonGroup
+          value={view}
+          exclusive
+          onChange={handleViewChange}
+          fullWidth
+          sx={styles.toggleGroup}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <ToggleButton value="players">Players</ToggleButton>
+          <ToggleButton value="communities">Communities</ToggleButton>
+        </ToggleButtonGroup>
+
+        <Box sx={styles.filterButtons}>
+          {(['all', 'tennis', 'pickleball'] as const).map((sport) => (
+            <Button
+              key={sport}
+              variant={selectedSport === sport ? 'contained' : 'outlined'}
+              onClick={() => handleSportChange(sport)}
+              sx={styles.actionButton}
+            >
+              {sport === 'all' ? 'All Sports' : sport.charAt(0).toUpperCase() + sport.slice(1)}
+            </Button>
+          ))}
+        </Box>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {loading && !players.length && !groups.length ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {view === 'players'
+                ? players.map(player => (
+                    <Card key={player.id} sx={styles.playerCard}>
+                      <CardContent sx={styles.cardContent}>
+                        <Box sx={styles.playerInfo}>
+                          <Avatar 
+                            src={player.photoURL || undefined}
+                            sx={styles.playerAvatar}
+                          >
+                            {player.name[0]}
+                          </Avatar>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={styles.playerHeader}>
+                              <Typography sx={styles.playerName}>
+                                {player.name}
+                              </Typography>
+                              <Button 
+                                variant="contained" 
+                                color="primary"
+                                size="small"
+                                sx={styles.actionButton}
+                                onClick={() => 
+                                  playRequests[player.id] === 'received' 
+                                    ? navigate(`/requests`) 
+                                    : handleConnect(player.id)
+                                }
+                                disabled={
+                                  playRequests[player.id] === 'sent' || 
+                                  player.id === currentUser?.uid ||
+                                  isConnected(player.id)
+                                }
+                              >
+                                {player.id === currentUser?.uid ? 'You' : getConnectButtonText(player.id)}
+                              </Button>
+                            </Box>
+
+                            <Typography sx={styles.playerMeta}>
+                              {player.level} • {player.distance}
+                            </Typography>
+
+                            <Box sx={styles.playerChips}>
+                              {player.sports.map(sport => (
+                                <Chip 
+                                  key={sport} 
+                                  label={sport} 
+                                  size="small" 
+                                  variant="outlined"
+                                  sx={{ borderRadius: 1.5 }}
+                                />
+                              ))}
+                            </Box>
+
+                            {player.availability && (
+                              <Box sx={styles.availabilitySection}>
+                                <PlayerAvailabilityDisplay availability={player.availability} />
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))
+                : groups.map(renderGroupCard)
+              }
+            </Box>
+
+            {hasMore && (
+              <Box sx={styles.loadMoreButton}>
+                <Button
+                  variant="outlined"
+                  onClick={() => fetchData(true)}
+                  disabled={loading}
+                  startIcon={loading && <CircularProgress size={20} />}
+                  sx={styles.actionButton}
+                >
+                  {loading ? 'Loading...' : 'Show More'}
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
+
+        <PlayRequestDialog
+          open={dialogOpen}
+          onClose={() => {
+            setDialogOpen(false);
+            setSelectedPlayerId(null);
+          }}
+          onSubmit={handleSendRequest}
+          sport={selectedSport === 'all' ? 'tennis' : selectedSport}
+          loading={sendingRequest}
+        />
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={() => setSnackbar({ ...snackbar, open: false })} 
+            severity="success"
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Box>
     </Container>
   );
 };
