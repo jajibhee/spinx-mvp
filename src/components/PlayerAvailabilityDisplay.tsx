@@ -16,29 +16,49 @@ export const PlayerAvailabilityDisplay: React.FC<PlayerAvailabilityDisplayProps>
       .map(([day]) => day.charAt(0).toUpperCase() + day.slice(1));
   };
 
+  const styles = {
+    container: {
+      mt: 2,
+      width: '100%'
+    },
+    chipGroup: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: 1,
+      justifyContent: { xs: 'center', sm: 'flex-start' }
+    },
+    title: {
+      textAlign: { xs: 'center', sm: 'left' },
+      mb: 1,
+      color: 'text.secondary'
+    },
+    chip: {
+      maxWidth: '100%',
+      height: 'auto',
+      '& .MuiChip-label': {
+        whiteSpace: 'normal',
+        display: 'block',
+        py: 0.5
+      }
+    }
+  };
+
   return (
-    <Box sx={{ mt: 1 }}>
-      <Tooltip title={availability.notes || 'No additional notes'}>
-        <Chip
-          icon={<AccessTimeIcon fontSize="small" />}
-          label={
-            <Typography noWrap variant="caption">
-              {`${availability.preferredTimes} • ${getAvailableDays().join(', ')}`}
-            </Typography>
-          }
-          size="small"
-          variant="outlined"
-          sx={{ 
-            maxWidth: '100%',
-            '& .MuiChip-label': {
-              display: 'block',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }
-          }}
-        />
-      </Tooltip>
+    <Box sx={styles.container}>
+      <Typography variant="body2" sx={styles.title}>
+        Availability
+      </Typography>
+      <Box sx={styles.chipGroup}>
+        <Tooltip title={availability.notes || 'No additional notes'}>
+          <Chip
+            icon={<AccessTimeIcon fontSize="small" />}
+            label={`${availability.preferredTimes} • ${getAvailableDays().join(', ')}`}
+            size="small"
+            variant="outlined"
+            sx={styles.chip}
+          />
+        </Tooltip>
+      </Box>
     </Box>
   );
 }; 

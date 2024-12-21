@@ -27,6 +27,7 @@ import { collection, addDoc, query, where, getDocs, updateDoc, doc, Timestamp, g
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { PlayRequestDialog } from '@/components/PlayRequestDialog';
 import { PlayerAvailabilityDisplay } from '@/components/PlayerAvailabilityDisplay';
+import AddIcon from '@mui/icons-material/Add';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -55,7 +56,18 @@ const styles = {
   },
   headerActions: {
     display: 'flex', 
-    gap: 1
+    gap: 1,
+    '& .MuiButton-root': {
+      '& .MuiButton-startIcon': {
+        marginRight: { xs: 0, sm: 1 }
+      },
+      '& .MuiButton-endIcon': { 
+        margin: { xs: 0, sm: 1 }
+      },
+      '& span:not(.MuiButton-startIcon):not(.MuiButton-endIcon)': {
+        display: { xs: 'none', sm: 'block' }
+      }
+    }
   },
   toggleGroup: {
     mb: 3,
@@ -88,10 +100,10 @@ const styles = {
     mb: 3,
     display: 'flex',
     gap: 1,
+    flexWrap: { xs: 'wrap', sm: 'nowrap' },
     '& .MuiButton-root': {
-      flex: 1,
-      borderRadius: 8,
-      py: 1.2
+      flex: { xs: '1 1 calc(33% - 8px)', sm: 1 },
+      minWidth: { xs: 'calc(33% - 8px)', sm: 'auto' }
     }
   },
   playerCard: {
@@ -110,7 +122,10 @@ const styles = {
   },
   playerInfo: {
     display: 'flex', 
-    gap: 2
+    gap: 2,
+    flexDirection: { xs: 'column', sm: 'row' },
+    alignItems: { xs: 'center', sm: 'flex-start' },
+    textAlign: { xs: 'center', sm: 'left' }
   },
   playerAvatar: {
     width: 56,
@@ -120,9 +135,12 @@ const styles = {
   },
   playerHeader: {
     display: 'flex', 
+    flexDirection: { xs: 'column', sm: 'row' },
     justifyContent: 'space-between', 
-    alignItems: 'center', 
-    mb: 1
+    alignItems: { xs: 'center', sm: 'flex-start' },
+    gap: { xs: 2, sm: 0 },
+    mb: 1,
+    width: '100%'
   },
   playerName: {
     fontWeight: 600,
@@ -131,13 +149,15 @@ const styles = {
   playerMeta: {
     color: 'text.secondary',
     fontSize: '0.9rem',
-    mb: 1
+    mb: 1,
+    textAlign: { xs: 'center', sm: 'left' }
   },
   playerChips: {
     mt: 2,
     display: 'flex', 
     flexWrap: 'wrap', 
-    gap: 0.8
+    gap: 0.8,
+    justifyContent: { xs: 'center', sm: 'flex-start' }
   },
   actionButton: {
     borderRadius: 6,
@@ -149,6 +169,16 @@ const styles = {
     justifyContent: 'center', 
     mt: 4,
     mb: 2
+  },
+  availabilitySection: {
+    mt: 2,
+    width: '100%',
+    '& .MuiTypography-root': {
+      textAlign: { xs: 'center', sm: 'left' }
+    },
+    '& .MuiChip-root': {
+      justifyContent: { xs: 'center', sm: 'flex-start' }
+    }
   }
 } as const;
 
@@ -509,6 +539,7 @@ const HomePage: React.FC = () => {
             color="primary" 
             onClick={() => navigate('/create-group')}
             size="small"
+            startIcon={<AddIcon />}
             sx={styles.actionButton}
           >
             Create Group
@@ -631,7 +662,9 @@ const HomePage: React.FC = () => {
                           </Box>
 
                           {player.availability && (
-                            <PlayerAvailabilityDisplay availability={player.availability} />
+                            <Box sx={styles.availabilitySection}>
+                              <PlayerAvailabilityDisplay availability={player.availability} />
+                            </Box>
                           )}
                         </Box>
                       </Box>

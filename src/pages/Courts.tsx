@@ -26,6 +26,112 @@ interface ExtendedCourt extends Court {
 
 const DALLAS_COORDS = { latitude: 32.7767, longitude: -96.7970 };
 
+const styles = {
+  container: {
+    pb: 8,
+    pt: 2,
+    px: { xs: 2, sm: 3 }
+  },
+  header: {
+    mb: 3,
+    color: 'primary.main',
+    fontWeight: 'bold'
+  },
+  searchBox: {
+    display: 'flex',
+    flexDirection: { xs: 'column', sm: 'row' },
+    gap: 1,
+    mb: 3
+  },
+  searchField: {
+    flex: 1,
+    '& .MuiOutlinedInput-root': {
+      borderRadius: 2
+    }
+  },
+  actionButton: {
+    borderRadius: 2,
+    textTransform: 'none',
+    minWidth: { xs: '100%', sm: 'auto' }
+  },
+  toggleGroup: {
+    mb: 3,
+    '& .MuiToggleButton-root': {
+      flex: 1,
+      py: 1.5,
+      textTransform: 'none'
+    }
+  },
+  filterSection: {
+    display: 'flex',
+    gap: 2,
+    mb: 3,
+    flexWrap: { xs: 'wrap', sm: 'nowrap' }
+  },
+  filterControl: {
+    flex: 1,
+    minWidth: { xs: '100%', sm: 120 }
+  },
+  courtCard: {
+    mb: 2,
+    borderRadius: 2,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      transition: 'transform 0.2s ease',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.12)'
+    }
+  },
+  courtImage: {
+    height: 200,
+    mb: 2,
+    borderRadius: 1,
+    overflow: 'hidden',
+    position: 'relative'
+  },
+  venueChip: {
+    position: 'absolute',
+    top: 8,
+    right: 8
+  },
+  courtContent: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start'
+  },
+  courtInfo: {
+    flex: 1
+  },
+  courtName: {
+    fontWeight: 600,
+    mb: 0.5
+  },
+  courtLocation: {
+    color: 'text.secondary',
+    mb: 1
+  },
+  phoneNumber: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    mb: 1
+  },
+  chipGroup: {
+    display: 'flex',
+    gap: 1,
+    flexWrap: 'wrap'
+  },
+  hoursButton: {
+    mt: 2,
+    textTransform: 'none',
+    color: 'text.secondary'
+  },
+  hoursList: {
+    mt: 1,
+    pl: 2
+  }
+} as const;
+
 const Courts: React.FC = () => {
   const [courts, setCourts] = useState<ExtendedCourt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,8 +254,8 @@ const Courts: React.FC = () => {
   });
 
   return (
-    <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Typography variant="h5" gutterBottom fontWeight="bold">
+    <Container sx={styles.container}>
+      <Typography variant="h5" sx={styles.header}>
         Tennis & Pickleball Courts
       </Typography>
 
@@ -172,25 +278,29 @@ const Courts: React.FC = () => {
         </Alert>
       )}
 
-      <Box component="form" onSubmit={handleZipSubmit} sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-          <TextField
-            label="Zip Code"
-            value={zipCode}
-            onChange={(e) => setZipCode(e.target.value)}
-            placeholder="Enter zip code"
-            size="small"
-          />
-          <Button type="submit" variant="contained">
-            Search
-          </Button>
-          <Button 
-            variant="outlined" 
-            onClick={handleUseCurrentLocation}
-          >
-            Use My Location
-          </Button>
-        </Box>
+      <Box component="form" onSubmit={handleZipSubmit} sx={styles.searchBox}>
+        <TextField
+          label="Zip Code"
+          value={zipCode}
+          onChange={(e) => setZipCode(e.target.value)}
+          placeholder="Enter zip code"
+          size="small"
+          sx={styles.searchField}
+        />
+        <Button 
+          type="submit" 
+          variant="contained"
+          sx={styles.actionButton}
+        >
+          Search
+        </Button>
+        <Button 
+          variant="outlined" 
+          onClick={handleUseCurrentLocation}
+          sx={styles.actionButton}
+        >
+          Use Location
+        </Button>
       </Box>
 
       <ToggleButtonGroup
@@ -198,14 +308,14 @@ const Courts: React.FC = () => {
         exclusive
         onChange={(_, value) => value && handleSportChange(value)}
         fullWidth
-        sx={{ mb: 3 }}
+        sx={styles.toggleGroup}
       >
         <ToggleButton value="tennis">Tennis</ToggleButton>
         <ToggleButton value="pickleball">Pickleball</ToggleButton>
       </ToggleButtonGroup>
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
+      <Box sx={styles.filterSection}>
+        <FormControl size="small" sx={styles.filterControl}>
           <InputLabel>Venue Type</InputLabel>
           <Select
             value={venueFilter}
@@ -218,7 +328,7 @@ const Courts: React.FC = () => {
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 120 }}>
+        <FormControl size="small" sx={styles.filterControl}>
           <InputLabel>Price</InputLabel>
           <Select
             value={priceFilter}
@@ -249,18 +359,10 @@ const Courts: React.FC = () => {
           </Alert>
         ) : (
           filteredCourts.map(court => (
-            <Card key={court.id} sx={{ mb: 2 }}>
+            <Card key={court.id} sx={styles.courtCard}>
               <CardContent>
                 {court.photo && (
-                  <Box 
-                    sx={{ 
-                      height: 200, 
-                      mb: 2, 
-                      borderRadius: 1,
-                      overflow: 'hidden',
-                      position: 'relative'
-                    }}
-                  >
+                  <Box sx={styles.courtImage}>
                     <img 
                       src={court.photo} 
                       alt={court.name}
@@ -274,37 +376,27 @@ const Courts: React.FC = () => {
                       label={court.isIndoor ? 'Indoor' : 'Outdoor'}
                       size="small"
                       color={court.isIndoor ? 'primary' : 'default'}
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8
-                      }}
+                      sx={styles.venueChip}
                     />
                   </Box>
                 )}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box>
-                    <Typography variant="h6" gutterBottom>
+                <Box sx={styles.courtContent}>
+                  <Box sx={styles.courtInfo}>
+                    <Typography variant="h6" sx={styles.courtName}>
                       {court.name}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                    <Typography variant="body2" sx={styles.courtLocation}>
                       {court.location}
                     </Typography>
                     {court.phoneNumber && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Box sx={styles.phoneNumber}>
                         <PhoneIcon fontSize="small" color="action" />
                         <Typography variant="body2">
                           {court.phoneNumber}
                         </Typography>
                       </Box>
                     )}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <Rating value={court.rating} readOnly precision={0.5} size="small" />
-                      <Typography variant="body2" color="text.secondary">
-                        ({court.rating})
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Box sx={styles.chipGroup}>
                       <Chip 
                         label={court.distanceText}
                         size="small"
@@ -343,12 +435,12 @@ const Courts: React.FC = () => {
                         }}
                       />}
                       onClick={() => toggleHours(court.id)}
-                      sx={{ mt: 2 }}
+                      sx={styles.hoursButton}
                     >
                       Opening Hours
                     </Button>
                     {expandedHours.includes(court.id) && (
-                      <Box sx={{ mt: 1, pl: 2 }}>
+                      <Box sx={styles.hoursList}>
                         {court.openingHours.map((hours, index) => (
                           <Typography key={index} variant="body2" color="text.secondary">
                             {hours}
