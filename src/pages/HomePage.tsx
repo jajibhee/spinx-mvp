@@ -30,6 +30,128 @@ import { PlayerAvailabilityDisplay } from '@/components/PlayerAvailabilityDispla
 
 const ITEMS_PER_PAGE = 5;
 
+const styles = {
+  container: {
+    pb: 8, 
+    pt: 7,
+    px: { xs: 2, sm: 3 }, // Tighter padding on mobile
+    maxWidth: '600px'
+  },
+  header: {
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    mb: 3,
+    position: 'sticky',
+    top: 56,
+    backgroundColor: 'background.default',
+    zIndex: 1100,
+    py: 2
+  },
+  headerTitle: {
+    fontWeight: 'bold',
+    fontSize: '1.5rem',
+    color: 'primary.main'
+  },
+  headerActions: {
+    display: 'flex', 
+    gap: 1
+  },
+  toggleGroup: {
+    mb: 3,
+    '& .MuiToggleButtonGroup-root': {
+      width: '100%'
+    },
+    '& .MuiToggleButton-root': {
+      flex: 1,
+      py: 1.5,
+      color: 'text.secondary',
+      textTransform: 'none',
+      borderBottom: 2,
+      borderColor: 'divider',
+      borderRadius: 0,
+      '&.Mui-selected': {
+        backgroundColor: 'primary.main',
+        color: 'white',
+        borderBottom: 2,
+        borderColor: 'primary.main',
+        '&:hover': {
+          backgroundColor: 'primary.dark'
+        }
+      },
+      '&:hover': {
+        backgroundColor: 'action.hover'
+      }
+    }
+  },
+  filterButtons: {
+    mb: 3,
+    display: 'flex',
+    gap: 1,
+    '& .MuiButton-root': {
+      flex: 1,
+      borderRadius: 8,
+      py: 1.2
+    }
+  },
+  playerCard: {
+    mb: 2,
+    borderRadius: 2,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      transition: 'transform 0.2s ease',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.12)'
+    }
+  },
+  cardContent: {
+    p: 2.5,
+    '&:last-child': { pb: 2.5 }
+  },
+  playerInfo: {
+    display: 'flex', 
+    gap: 2
+  },
+  playerAvatar: {
+    width: 56,
+    height: 56,
+    border: 2,
+    borderColor: 'primary.light'
+  },
+  playerHeader: {
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    mb: 1
+  },
+  playerName: {
+    fontWeight: 600,
+    fontSize: '1.1rem'
+  },
+  playerMeta: {
+    color: 'text.secondary',
+    fontSize: '0.9rem',
+    mb: 1
+  },
+  playerChips: {
+    mt: 2,
+    display: 'flex', 
+    flexWrap: 'wrap', 
+    gap: 0.8
+  },
+  actionButton: {
+    borderRadius: 6,
+    textTransform: 'none',
+    px: 2
+  },
+  loadMoreButton: {
+    display: 'flex', 
+    justifyContent: 'center', 
+    mt: 4,
+    mb: 2
+  }
+} as const;
+
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { logout, currentUser } = useAuth();
@@ -241,60 +363,6 @@ const HomePage: React.FC = () => {
     handleMenuClose();
   };
 
-  const renderPlayerCard = (player: Player) => (
-    <Card key={player.id}>
-      <CardContent>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Avatar 
-            src={player.photoURL || undefined}
-            sx={{ width: 48, height: 48 }}
-          >
-            {player.name[0]}
-          </Avatar>
-          <Box sx={{ flex: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="h6">{player.name}</Typography>
-              <Button 
-                variant="contained" 
-                color="primary"
-                size="small"
-                onClick={() => 
-                  playRequests[player.id] === 'received' 
-                    ? navigate(`/requests`) 
-                    : handleConnect(player.id)
-                }
-                disabled={
-                  playRequests[player.id] === 'sent' || 
-                  player.id === currentUser?.uid ||
-                  isConnected(player.id)
-                }
-              >
-                {player.id === currentUser?.uid ? 'You' : getConnectButtonText(player.id)}
-              </Button>
-            </Box>
-
-            <Typography variant="body2" color="text.secondary">
-              {player.level} • {player.distance}
-            </Typography>
-            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {player.sports.map(sport => (
-                <Chip 
-                  key={sport} 
-                  label={sport} 
-                  size="small" 
-                  variant="outlined"
-                />
-              ))}
-            </Box>
-            {player.availability && (
-              <PlayerAvailabilityDisplay availability={player.availability} />
-            )}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-
   const renderGroupCard = (group: Group) => (
     <Card key={group.id}>
       <CardContent>
@@ -430,21 +498,27 @@ const HomePage: React.FC = () => {
   }, [view, selectedSport]);
 
   return (
-    <Container maxWidth="sm" sx={{ pb: 8, pt: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" component="h1" fontWeight="bold">
+    <Container sx={styles.container} disableGutters>
+      <Box sx={styles.header}>
+        <Typography sx={styles.headerTitle}>
           Near Me
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="contained" color="primary" onClick={() => navigate('/create-group')}>
+        <Box sx={styles.headerActions}>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={() => navigate('/create-group')}
+            size="small"
+            sx={styles.actionButton}
+          >
             Create Group
           </Button>
           <NotificationBadge />
           <IconButton
             edge="end"
             color="inherit"
-            aria-label="menu"
             onClick={handleMenuOpen}
+            sx={{ ml: 0.5 }}
           >
             <MenuIcon />
           </IconButton>
@@ -472,23 +546,24 @@ const HomePage: React.FC = () => {
         exclusive
         onChange={handleViewChange}
         fullWidth
-        sx={{ mb: 2 }}
+        sx={styles.toggleGroup}
       >
         <ToggleButton value="players">Players</ToggleButton>
         <ToggleButton value="communities">Communities</ToggleButton>
       </ToggleButtonGroup>
 
-      <ButtonGroup variant="outlined" sx={{ mb: 3, display: 'flex', gap: 1 }}>
+      <Box sx={styles.filterButtons}>
         {(['all', 'tennis', 'pickleball'] as const).map((sport) => (
           <Button
             key={sport}
             variant={selectedSport === sport ? 'contained' : 'outlined'}
             onClick={() => handleSportChange(sport)}
+            sx={styles.actionButton}
           >
-            {sport.charAt(0).toUpperCase() + sport.slice(1)}
+            {sport === 'all' ? 'All Sports' : sport.charAt(0).toUpperCase() + sport.slice(1)}
           </Button>
         ))}
-      </ButtonGroup>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -504,29 +579,81 @@ const HomePage: React.FC = () => {
         <>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {view === 'players'
-              ? players.map(renderPlayerCard)
+              ? players.map(player => (
+                  <Card key={player.id} sx={styles.playerCard}>
+                    <CardContent sx={styles.cardContent}>
+                      <Box sx={styles.playerInfo}>
+                        <Avatar 
+                          src={player.photoURL || undefined}
+                          sx={styles.playerAvatar}
+                        >
+                          {player.name[0]}
+                        </Avatar>
+                        <Box sx={{ flex: 1 }}>
+                          <Box sx={styles.playerHeader}>
+                            <Typography sx={styles.playerName}>
+                              {player.name}
+                            </Typography>
+                            <Button 
+                              variant="contained" 
+                              color="primary"
+                              size="small"
+                              sx={styles.actionButton}
+                              onClick={() => 
+                                playRequests[player.id] === 'received' 
+                                  ? navigate(`/requests`) 
+                                  : handleConnect(player.id)
+                              }
+                              disabled={
+                                playRequests[player.id] === 'sent' || 
+                                player.id === currentUser?.uid ||
+                                isConnected(player.id)
+                              }
+                            >
+                              {player.id === currentUser?.uid ? 'You' : getConnectButtonText(player.id)}
+                            </Button>
+                          </Box>
+
+                          <Typography sx={styles.playerMeta}>
+                            {player.level} • {player.distance}
+                          </Typography>
+
+                          <Box sx={styles.playerChips}>
+                            {player.sports.map(sport => (
+                              <Chip 
+                                key={sport} 
+                                label={sport} 
+                                size="small" 
+                                variant="outlined"
+                                sx={{ borderRadius: 1.5 }}
+                              />
+                            ))}
+                          </Box>
+
+                          {player.availability && (
+                            <PlayerAvailabilityDisplay availability={player.availability} />
+                          )}
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))
               : groups.map(renderGroupCard)
             }
           </Box>
 
           {hasMore && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Box sx={styles.loadMoreButton}>
               <Button
                 variant="outlined"
                 onClick={() => fetchData(true)}
                 disabled={loading}
                 startIcon={loading && <CircularProgress size={20} />}
+                sx={styles.actionButton}
               >
                 {loading ? 'Loading...' : 'Show More'}
               </Button>
             </Box>
-          )}
-
-          {!loading && ((view === 'players' && players.length === 0) || 
-            (view === 'communities' && groups.length === 0)) && (
-            <Typography color="text.secondary" align="center">
-              No {view} found for the selected sport
-            </Typography>
           )}
         </>
       )}

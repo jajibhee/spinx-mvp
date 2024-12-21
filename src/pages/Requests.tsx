@@ -1,283 +1,244 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Container,
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  Avatar,
-  Chip,
-  Alert,
-  Divider,
-  Stack
+  Container, Typography, Card, CardContent, Box,
+  Avatar, Button, Chip, Stack, Alert, CircularProgress,
+  Tabs, Tab, Divider
 } from '@mui/material';
-import { useAuth } from '@/contexts/AuthContext';
+import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, updateDoc, doc, Timestamp, addDoc, getDoc } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface PlayRequest {
   id: string;
   senderId: string;
   senderName: string;
   senderEmail: string;
-  senderPhone?: string;
+  senderPhone: string;
+  senderPhotoURL?: string;
   receiverId: string;
-  receiverName: string;
-  receiverEmail: string;
-  receiverPhone?: string;
-  sport: string;
   status: 'pending' | 'accepted' | 'declined';
-  createdAt: Timestamp;
+  sport: 'tennis' | 'pickleball';
   message: string;
-  contactShared?: boolean;
+  createdAt: Timestamp;
+  contactShared: boolean;
 }
 
-const Requests: React.FC = () => {
+const styles = {
+  header: {
+    mb: 3,
+    color: 'primary.main',
+    fontWeight: 'bold'
+  },
+  tabs: {
+    mb: 3,
+    borderBottom: 1,
+    borderColor: 'divider'
+  },
+  requestCard: {
+    mb: 2,
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      transition: 'transform 0.2s ease'
+    }
+  },
+  cardContent: {
+    p: 2.5,
+    '&:last-child': { pb: 2.5 }
+  },
+  userInfo: {
+    display: 'flex',
+    gap: 2,
+    mb: 2
+  },
+  actions: {
+    display: 'flex',
+    gap: 1,
+    mt: 2
+  }
+} as const;
+
+export const Requests = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [tabValue, setTabValue] = useState(0);
   const [receivedRequests, setReceivedRequests] = useState<PlayRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<PlayRequest[]>([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [acceptingRequest, setAcceptingRequest] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
 
   useEffect(() => {
     if (!currentUser) return;
+
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        const receivedQuery = query(
+          collection(db, 'playRequests'),
+          where('receiverId', '==', currentUser.uid),
+          where('status', '==', 'pending')
+        );
+
+        const sentQuery = query(
+          collection(db, 'playRequests'),
+          where('senderId', '==', currentUser.uid),
+          where('status', '==', 'pending')
+        );
+
+        const [receivedSnap, sentSnap] = await Promise.all([
+          getDocs(receivedQuery),
+          getDocs(sentQuery)
+        ]);
+
+        setReceivedRequests(receivedSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as PlayRequest[]);
+
+        setSentRequests(sentSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as PlayRequest[]);
+
+      } catch (err) {
+        console.error('Error fetching requests:', err);
+        setError('Failed to load requests');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchRequests();
   }, [currentUser]);
 
-  const fetchRequests = async () => {
-    try {
-      const receivedQuery = query(
-        collection(db, 'playRequests'),
-        where('receiverId', '==', currentUser?.uid),
-        where('status', '==', 'pending')
-      );
-
-      const sentQuery = query(
-        collection(db, 'playRequests'),
-        where('senderId', '==', currentUser?.uid)
-      );
-
-      const [receivedSnapshot, sentSnapshot] = await Promise.all([
-        getDocs(receivedQuery),
-        getDocs(sentQuery)
-      ]);
-
-      setReceivedRequests(
-        receivedSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as PlayRequest))
-      );
-
-      setSentRequests(
-        sentSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as PlayRequest))
-      );
-    } catch (err) {
-      console.error('Error fetching requests:', err);
-      setError('Failed to load requests');
-    }
-  };
-
   const handleRequest = async (requestId: string, action: 'accept' | 'decline') => {
+    if (!currentUser) return;
+
     try {
       const requestRef = doc(db, 'playRequests', requestId);
-      const request = receivedRequests.find(req => req.id === requestId);
-      
-      if (!request || !currentUser) return;
-
       await updateDoc(requestRef, {
         status: action,
-        respondedAt: Timestamp.now(),
-        contactShared: action === 'accept' ? true : false,
-        receiverName: currentUser.displayName || 'Anonymous',
-        receiverEmail: currentUser.email || '',
-        receiverPhone: currentUser.phoneNumber || ''
+        updatedAt: Timestamp.now()
       });
 
-      if (action === 'accept') {
-        // Create a new connection
-        await addDoc(collection(db, 'connections'), {
-          players: [
-            request.senderId,
-            currentUser.uid
-          ],
-          playerDetails: [
-            {
-              id: request.senderId,
-              name: request.senderName,
-              photoURL: null
-            },
-            {
-              id: currentUser.uid,
-              name: currentUser.displayName || 'Anonymous',
-              photoURL: currentUser.photoURL
-            }
-          ],
-          sport: request.sport,
-          createdAt: new Date().toISOString(),
-          lastPlayedAt: new Date().toISOString(),
-          status: 'active'
-        });
-
-        // Create notification for sender
-        await addDoc(collection(db, 'notifications'), {
-          userId: request.senderId,
-          type: 'request_accepted',
-          title: 'Play Request Accepted!',
-          message: `${currentUser.displayName || 'Someone'} accepted your request to play ${request.sport}`,
-          read: false,
-          createdAt: Timestamp.now(),
-          requestId: request.id
-        });
-      }
-
       // Remove the request from the list
-      setReceivedRequests(prev => prev.filter(req => req.id !== requestId));
-      
-      setSuccess(
-        action === 'accept' 
-          ? 'Request accepted! Player added to your connections.'
-          : 'Request declined'
+      setReceivedRequests(prev => 
+        prev.filter(request => request.id !== requestId)
       );
-
-      fetchRequests();
     } catch (err) {
-      console.error('Error updating request:', err);
+      console.error('Error handling request:', err);
       setError(`Failed to ${action} request`);
     }
   };
 
-  const renderContactInfo = (request: PlayRequest, type: 'received' | 'sent') => {
-    if (request.status !== 'accepted' || !request.contactShared) return null;
-
-    const contactInfo = type === 'received' ? {
-      name: request.senderName,
-      email: request.senderEmail,
-      phone: request.senderPhone
-    } : {
-      name: request.receiverName,
-      email: request.receiverEmail,
-      phone: request.receiverPhone
-    };
-
-    return (
-      <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-        <Typography variant="subtitle2" color="primary" gutterBottom>
-          Contact Information
-        </Typography>
-        <Typography variant="body2">
-          {contactInfo.name}
-        </Typography>
-        <Typography variant="body2">
-          Email: {contactInfo.email}
-        </Typography>
-        {contactInfo.phone && (
-          <Typography variant="body2">
-            Phone: {contactInfo.phone}
-          </Typography>
-        )}
-      </Box>
-    );
-  };
-
   const renderRequest = (request: PlayRequest, type: 'received' | 'sent') => (
-    <Card key={request.id}>
-      <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-            <Avatar>{request.senderName[0]}</Avatar>
-            <Box>
-              <Typography variant="h6">
-                {type === 'received' ? request.senderName : 'You'} wants to play {request.sport}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {new Date(request.createdAt.toDate()).toLocaleDateString()}
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                {request.message}
-              </Typography>
-              {renderContactInfo(request, type)}
-            </Box>
-          </Box>
-          {type === 'received' && request.status === 'pending' && (
-            <Stack direction="row" spacing={1}>
-              <Button
-                variant="contained"
+    <Card key={request.id} sx={styles.requestCard}>
+      <CardContent sx={styles.cardContent}>
+        <Box sx={styles.userInfo}>
+          <Avatar 
+            src={request.senderPhotoURL} 
+            sx={{ width: 48, height: 48 }}
+          >
+            {request.senderName[0]}
+          </Avatar>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle1">
+              {type === 'received' ? 'Request from' : 'Request to'} {request.senderName}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Chip 
+                label={request.sport} 
+                size="small" 
                 color="primary"
-                onClick={() => handleRequest(request.id, 'accept')}
-              >
-                Accept
-              </Button>
-              <Button
+              />
+              <Chip
+                label={new Date(request.createdAt.toDate()).toLocaleDateString()}
+                size="small"
                 variant="outlined"
-                color="error"
-                onClick={() => handleRequest(request.id, 'decline')}
-              >
-                Decline
-              </Button>
+              />
             </Stack>
-          )}
-          {type === 'sent' && (
-            <Chip 
-              label={request.status.charAt(0).toUpperCase() + request.status.slice(1)} 
-              color={
-                request.status === 'accepted' ? 'success' : 
-                request.status === 'declined' ? 'error' : 
-                'default'
-              }
-            />
-          )}
+          </Box>
         </Box>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          "{request.message}"
+        </Typography>
+
+        {type === 'received' && (
+          <Box sx={styles.actions}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => handleRequest(request.id, 'accept')}
+            >
+              Accept
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={() => handleRequest(request.id, 'decline')}
+            >
+              Decline
+            </Button>
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Typography variant="h5" component="h1" gutterBottom fontWeight="bold">
+      <Typography variant="h5" sx={styles.header}>
         Play Requests
       </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          Received Requests
-        </Typography>
-        <Stack spacing={2}>
+      <Tabs 
+        value={tabValue} 
+        onChange={(_, newValue) => setTabValue(newValue)}
+        sx={styles.tabs}
+      >
+        <Tab label={`Received (${receivedRequests.length})`} />
+        <Tab label={`Sent (${sentRequests.length})`} />
+      </Tabs>
+
+      {tabValue === 0 && (
+        <>
           {receivedRequests.length === 0 ? (
-            <Typography color="text.secondary">No pending requests</Typography>
+            <Alert severity="info">
+              No pending requests received
+            </Alert>
           ) : (
             receivedRequests.map(request => renderRequest(request, 'received'))
           )}
-        </Stack>
-      </Box>
+        </>
+      )}
 
-      <Divider sx={{ my: 4 }} />
-
-      <Box>
-        <Typography variant="h6" gutterBottom>
-          Sent Requests
-        </Typography>
-        <Stack spacing={2}>
+      {tabValue === 1 && (
+        <>
           {sentRequests.length === 0 ? (
-            <Typography color="text.secondary">No sent requests</Typography>
+            <Alert severity="info">
+              No pending requests sent
+            </Alert>
           ) : (
             sentRequests.map(request => renderRequest(request, 'sent'))
           )}
-        </Stack>
-      </Box>
+        </>
+      )}
     </Container>
   );
 };
