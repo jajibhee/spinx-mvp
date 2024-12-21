@@ -375,9 +375,10 @@ const Profile: React.FC = () => {
                     onClick={() => {
                       if (isEditing) {
                         if (sport === 'both') {
+                          const hasBoth = profile.sports.includes('tennis') && profile.sports.includes('pickleball');
                           setProfile(prev => ({
                             ...prev,
-                            sports: ['tennis', 'pickleball']
+                            sports: hasBoth ? [] : ['tennis', 'pickleball']
                           }));
                         } else {
                           handleSportToggle(sport as Sport);
